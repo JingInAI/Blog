@@ -44,6 +44,27 @@ jobs:
       - name: Configure Pages
         id: pages
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+        with:
+          # Optional, repository-scoped setup credential; normal runs only read existing settings.
+          token: ${{ secrets.PAGES_SETUP_TOKEN || github.token }}
+          enablement: ${{ secrets.PAGES_SETUP_TOKEN != '' }}
+      - name: Explain Pages setup failure
+        if: failure() && steps.pages.outcome == 'failure'
+        run: |
+          cat <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          ## Pages setup could not be read or created
+
+          Application verification passed; this failure occurred while reading or enabling the GitHub Pages site.
+          Check Settings → Pages: the repository must support Pages and Source must be GitHub Actions.
+          A private repository needs a GitHub plan that supports Pages for private repositories.
+          If the site is not yet provisioned, enable it in Settings or set the optional PAGES_SETUP_TOKEN Actions secret.
+          That setup credential must be restricted to this repository and have Pages: write and Administration: write.
+          GITHUB_TOKEN cannot perform this first-time enablement, even with pages: write.
+          Remove the setup secret after successful provisioning; subsequent runs use GITHUB_TOKEN with pages: read.
+          See docs/usage.md for setup and troubleshooting. This failed job has not uploaded or deployed a site.
+          EOF
+          echo "::error::GitHub Pages setup is unavailable. Check the Pages settings, supported repository plan, and optional setup credential; see the job summary."
+          exit 1
       - name: Build selected framework at the Pages path
         run: npm run build
         env:

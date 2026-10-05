@@ -1,6 +1,6 @@
 # 工程初始化执行记录
 
-执行日期：2026-10-05。实施基线：review-07；当前修订：implementation-05。工程阶段 P0–P6 已完成并通过本地验收；P7 实际 GitHub Pages 发布未执行，真实 API 未接入。用户已明确选择 Vue 作为线上构建目标。
+执行日期：2026-10-05。实施基线：review-07；当前修订：implementation-05。工程阶段 P0–P6 已完成并通过本地验收；初始化提交已推送，首次 P7 作业在 Configure Pages 读取元数据失败，修订与 T14 验收继续进行，真实 API 未接入。用户已明确选择 Vue 作为线上构建目标。
 
 ## 已实施内容
 
@@ -13,7 +13,7 @@
 | P4 | 唯一 Markdown/GFM 解析、安全只读 AST、原始 HTML 文本、链接诊断、资源/alt 解析、脚注及原文错误入口 | content.test.ts、edge-cases.test.ts：T09a |
 | P5 | Vue/React 适配器、两主题、参数草稿、站点/操作反馈、图片开始/完成/脱离/重试、移动端布局 | 36 项 Chromium 集成场景：20 项静态来源 + 12 项 HTTP 来源 + 4 项扩展主题表单，边界/扩展测试 T11 |
 | P6 | 根/子路径、详情/历史、严格分享协议、版本变化显式重载、锁文件 CI/Pages 工作流、使用与扩展文档 | sharing.test.ts：T12，浏览器真实静态 V1→V2：T13d，产物审计与文档命令检查 |
-| P7 | 实际 Pages 地址/部署日志、线上跨发布场景、可选真实 API | 待外部发布条件，不计入本地通过 |
+| P7 | 实际 Pages 地址/部署日志、线上跨发布场景、可选真实 API | 初始化提交已推送，用户提供首次 Configure Pages 404；尚未成功部署及完成线上场景 |
 
 源码与测试均在当前工作区；原工作区的 Git 元数据只读，未暂存、提交或改变其分支。发布准备使用 `/tmp/blog-release-20261005` 独立检出，真实推送/部署结果另行记录。此前的 `.blog-init-probe` 和 `blog-architecture.json` 保留，不加入工程发布提交；构建器不会上传它们。
 
@@ -86,9 +86,23 @@ T09a/b 与 T13a/b/c/d 各有独立本地证据，整组本地验收完成。测�
 - 用户明确确认仓库 Pages 发布来源已设为 GitHub Actions。原工作区 Git 元数据只读，在 `/tmp/blog-release-20261005` 从本地初始提交建立独立检出，以准备发布提交；推送和线上结果不会由本地测试替代。
 - 独立检出已创建工程发布提交：74 个文件逐一比较 SHA-256 与原工作区相同，保留既有初始提交为父提交，作者明确为 Codex；没有加入旧探测文件、既有架构文件、node_modules、构建产物或测试生成目录。SSH `git push --dry-run origin HEAD:main` 成功，未修改远端；实际推送和线上验收另行记录。
 
+## 真实推送与待验证发布结果
+
+- 初始化提交 `32e6d27a6b3b0a62e5575e8fc1ca144c6ac445fd` 已通过独立检出推送至 `git@github.com:JingInAI/Blog.git` 的 main；未强推，保留原始提交历史。原工作区 HEAD 仍为 `2327ef43011973f2c71b37ee9b4e8a1c7c663195`，其只读 Git 元数据未修改。
+- 用户已确认仓库 Pages 来源为 GitHub Actions；工作流实际名称为 **Verify and publish blog**，发布选择 Vue。
+- 推送后未认证查询仓库 Actions API 与网页均返回 404，候选 `https://jinginai.github.io/Blog/` 也返回 404。API 剩余请求额度为 27；这次结果不能当作作业失败日志、成功证据或最终站点地址确认。没有获取真实作业/Pages API 的认证读取能力，已请求用户提供该提交对应的工作流状态或失败步骤。
+- 最终本地 Vue /Blog/ 候选通过 Chromium 烟雾检查：应用壳为 Vue，无文章、无作者补值，风格选择后刷新恢复；资源初次请求 200，缓存刷新 304，无页面脚本异常。
+
+## 首次真实工作流失败与修订
+
+- 用户提供 `32e6d27` 对应作业的 build-pages 日志：`HttpError: Not Found`，固定版本 configure-pages 在 GET Pages site 时失败。这是受认证工作流的实际失败证据，不同于此前未认证 API 404；应用本次 Pages 构建和上传尚未开始。
+- 核对固定 SHA 的 [action.yml](https://github.com/actions/configure-pages/blob/983d7736d9b0ae728b81ab479565c72886d7745b/action.yml) 及 [API 实现](https://github.com/actions/configure-pages/blob/983d7736d9b0ae728b81ab479565c72886d7745b/src/api-client.js)：enablement 默认为 false；首次创建必须提供普通 GITHUB_TOKEN 以外的适当凭据。按 [创建 Pages API 权限](https://docs.github.com/en/rest/pages/pages#create-a-github-pages-site)，受限管理凭据需要 Pages/write 与 Administration/write。
+- 工作流增加可选 Actions secret `PAGES_SETUP_TOKEN`，配置时向官方 action 传入该凭据和 enablement；未配置仍只读取站点。保持 build-pages 的原 GITHUB_TOKEN 权限，未加入无效的 administration 权限项，也未盲目开大权限。失败提供操作摘要，保持作业失败并阻止构建/上传。
+- `docs/usage.md` 补齐设置状态、首次创建、仓库方案范围和凭据配置排查。已请求用户提供 Settings → Pages 实际提示以确认原因；不能仅凭 404 确定仓库可见性、账号方案或站点是否存在。新增启用入口与诊断通过 actionlint；尚无配置 setup secret 或创建 Pages 成功的证据。
+
 ## 外部未完成条件
 
-- P7/T14 未执行，没有宣告线上地址可用，也没有改变仓库 Pages 设置或 Actions 变量。
-- Vue 发布目标已明确并写入工作流；用户也已确认 Pages 来源设为 GitHub Actions。SSH 写入能力、真实作业及线上结果仍需验证；没有环境 API 认证。BLOG_FRAMEWORK 变量是可选显式覆盖。
+- P7 已完成初始化提交和推送；首次实际作业失败已定位到 Configure Pages，尚未确认线上地址或 T14，没有宣告线上地址可用，没有改变仓库 Pages 设置、仓库可见性、Actions 变量或 secrets。
+- Vue 发布目标已明确并写入工作流；用户也已确认 Pages 来源设为 GitHub Actions，SSH 推送已成功。真实作业及线上结果仍需验证；没有环境 API 认证。BLOG_FRAMEWORK 变量是可选显式覆盖。
 - 真实后端 API 未提供；HTTP 契约由受控本机服务及错误/取消测试验证，真实服务器的授权、CORS 和可用性待接入后验证。
 - 不承诺 SSR、预生成文章 HTML、SEO 或分享卡片，这些不属于当前客户端初始化范围。

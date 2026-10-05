@@ -37,15 +37,21 @@ npm run check
 
 `check` 依次检查类型、依赖边界、契约/核心/公开产物、两应用构建和真实 Chromium 场景。Linux CI 使用 `npx playwright install --with-deps chromium` 安装浏览器系统依赖。浏览器夹具在 `.generated/e2e/` 生成，测试服务器只监听本机；不上传夹具或报告为博客内容。
 
-浏览器验收包括静态来源 20 项和 HTTP 来源 12 项，均覆盖 Vue/React 的根路径与仓库子路径。HTTP 场景由独立端口提供 API，验证真实跨域请求、凭据默认省略、分页、资源基址优先级、分享及失败恢复。测试服务不构成生产后端，也不证明真实服务器的 CORS 或授权设置已完成。
+浏览器验收包括静态来源 20 项和 HTTP 来源 12 项，均覆盖 Vue/React 的根路径与仓库子路径，另有两框架各 2 项扩展主题表单场景，总计 36 项。HTTP 场景由独立端口提供 API，验证真实跨域请求、凭据默认省略、分页、资源基址优先级、分享及失败恢复。测试服务不构成生产后端，也不证明真实服务器的 CORS 或授权设置已完成。
 
 ## 首次 GitHub Pages 发布
 
-本项目已明确选择 Vue 作为线上发布框架，选择记录在 `.github/workflows/pages.yml` 的 build-pages.env 中，React 仍参与构建与验收。在 GitHub 仓库 Settings → Pages 中选择 GitHub Actions 作为来源即可；无需再设置框架变量。以后如需改变发布目标，在 Settings → Secrets and variables → Actions → Variables 设置 `BLOG_FRAMEWORK=vue` 或 `react`，显式覆盖已记录的选择。其他非空变量值会令构建失败，不能静默回退。
+本项目已明确选择 Vue 作为线上发布框架，选择记录在 `.github/workflows/pages.yml` 的 build-pages.env 中，React 仍参与构建与验收。首先在 GitHub 仓库 Settings → Pages 中启用站点并选择 GitHub Actions 作为来源，确认设置已保存；无需再设置框架变量。以后如需改变发布目标，在 Settings → Secrets and variables → Actions → Variables 设置 `BLOG_FRAMEWORK=vue` 或 `react`，显式覆盖已记录的选择。其他非空变量值会令构建失败，不能静默回退。
 
-提交工程到默认分支后，`.github/workflows/pages.yml` 先验证两框架，再按上述明确选择构建一个应用；从 configure-pages 的 `base_path` 取得根/仓库子路径，只上传相应 `dist/` 目录，最后交给 `github-pages` 环境发布。工作流不会启用 Pages 设置或创建 API 服务。动作使用官方仓库已核对的提交 SHA。
+提交工程到默认分支后，`.github/workflows/pages.yml`（**Verify and publish blog**）先验证两框架，再按上述明确选择构建一个应用；从 configure-pages 的 `base_path` 取得根/仓库子路径，只上传相应 `dist/` 目录，最后交给 `github-pages` 环境发布。默认只读取已启用的 Pages；显式提供下述 setup secret 时才尝试创建站点，不创建 API 服务。动作使用官方仓库已核对的提交 SHA。
 
 build-pages 仅有 contents/read、pages/read，用于读取 Pages 元数据；deploy 才授予 pages/write 和 id-token/write。默认分支运行不因后续提交被取消，PR/其他分支仍可取消旧验证；部署作业继续串行。这样工作流级取消不会覆盖部署作业的保护。设置与并发规则参考 [Pages 元数据权限](https://docs.github.com/en/rest/pages/pages#get-a-github-pages-site)、[Actions 并发](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)。
+
+如果 **build-pages → Configure Pages** 报 `Get Pages site failed` / `Not Found`，失败点是 Pages 元数据读取，应用尚未开始本次发布构建。404 本身不能确定是站点未创建、凭据不可见还是平台设置问题。查看 Settings → Pages 是否已经启用站点及 GitHub Actions 来源；免费方案支持公开仓库的 Pages，私有仓库需要支持该能力的 Pro/Team/Enterprise 方案。仓库可见性与账号方案由所有者决定，工作流不会更改。参见 [Pages 可用范围](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages)。
+
+如果设置中尚未创建站点，也可使用工作流的显式首次启用接口：在仓库 Actions Secrets 中添加 `PAGES_SETUP_TOKEN`，值为仅授权此仓库且具有 **Pages: write** 与 **Administration: write** 的管理凭据，并重新运行工作流。具备相应管理权限的所有者创建和保存该 secret；不要将凭据写进代码、内容或聊天。工作流检测到 secret 才向官方 configure-pages 传入该凭据和 `enablement: true`；没有 secret 时仍使用普通 GITHUB_TOKEN 读取既有设置。成功创建后删除 setup secret，后续部署不需要它。
+
+普通 GITHUB_TOKEN 不支持此首次创建流程，单独把作业权限改成 pages/write 或只添加 enablement/true 不会满足管理权限要求。配置失败会保持作业失败并输出排查摘要，不猜测 basePath、不上传不完整产物，也不假报部署成功。参见 [本项目固定版本的 configure-pages 参数](https://github.com/actions/configure-pages/blob/983d7736d9b0ae728b81ab479565c72886d7745b/action.yml) 与 [创建 Pages 的 API 权限](https://docs.github.com/en/rest/pages/pages#create-a-github-pages-site)。
 
 也可以手动构建选定框架，便于发布前检查：
 
