@@ -53,6 +53,10 @@ build-pages 仅有 contents/read、pages/read，用于读取 Pages 元数据；d
 
 普通 GITHUB_TOKEN 不支持此首次创建流程，单独把作业权限改成 pages/write 或只添加 enablement/true 不会满足管理权限要求。配置失败会保持作业失败并输出排查摘要，不猜测 basePath、不上传不完整产物，也不假报部署成功。参见 [本项目固定版本的 configure-pages 参数](https://github.com/actions/configure-pages/blob/983d7736d9b0ae728b81ab479565c72886d7745b/action.yml) 与 [创建 Pages 的 API 权限](https://docs.github.com/en/rest/pages/pages#create-a-github-pages-site)。
 
+默认分支的 verify 成功而 build-pages 失败时，独立 **diagnose-pages** 作业用普通 GITHUB_TOKEN 做两次只读 API 查询，只授予 contents/read 与 pages/read。结果写入该作业的 **Read limited authenticated Pages diagnostics** 日志及作业摘要，包含提交/运行身份、仓库的 private/hasPages、Pages 请求状态及有效响应中的 buildType/siteUrl。它不写远端分支、不创建站点，不取得管理权限；token、API 原始错误正文、响应头及额外字段均不记录。PR 和其他分支不执行此作业，诊断成功也不将失败发布改为成功。
+
+排查时复制这段限定字段的 JSON 即可，不需要提供凭据。`hasPages: false` 是仓库 API 报告未启用 Pages 的事实；Pages `status: 404` 本身仍不能说明账号套餐或管理权限。`status: 200` 加 buildType/workflow 只证明站点元数据可读，不证明部署完成；实际地址与访问仍以 deploy 和线上验收为准。网络失败与无效响应单独记录，不能伪装成未启用。
+
 也可以手动构建选定框架，便于发布前检查：
 
 ```sh

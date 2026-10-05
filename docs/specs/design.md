@@ -1,6 +1,6 @@
 # 博客项目设计规格
 
-修订标识：implementation-05，基于 review-07，与计划同步实施。
+修订标识：implementation-06，基于 review-07，与计划同步实施。
 
 状态：P0–P6 已实施并通过本地验收；初始化提交已推送，首次 P7 作业在 Pages 元数据读取失败，修订与 T14 验收继续进行。历史审查表记录当时的修订，当前代码/测试状态见 [执行记录](../plans/execution.md)。
 
@@ -724,3 +724,5 @@ implementation-04 补强扩展包语法树边界检查及全注册表身份/版�
 implementation-05 明确通用主题表单与共享 JSON 描述一致：required 表示字段存在，不要求布尔值为 true 或字符串非空；枚举通过完整 JSON 值匹配，null 与未填写分别表示；首次没有默认值时显示未选择，不自动提交第一项。数字允许有限小数，清空数字或取消可选枚举选择从草稿移除该字段，再由共享规范化执行显式视觉默认或 required 校验，不生成 NaN。字段错误来自共享控制器，合法 false/null/空字符串可以提交。测试专用主题只用于独立浏览器入口，不进入生产注册表或内容。
 
 首次真实发布的 configure-pages GET 返回 404；工作流默认只读取已启用站点，不能将来源下拉框的用户确认当作 API 已创建站点的证据。补充显式 PAGES_SETUP_TOKEN 接口：仅配置该 Actions secret 时，固定版本的官方 action 使用额外凭据尝试 enablement；普通 GITHUB_TOKEN 不承担首次创建。创建凭据需要此仓库的 Pages/write 与 Administration/write，创建完成可删除。失败输出操作摘要并保持作业失败，不猜平台路径、不上传不完整输出，不更改仓库可见性或方案。默认构建/部署权限维持原范围；真实设置、套餐和凭据可用性仍按平台证据核对。
+
+implementation-06 增加默认分支发布失败后的受认证只读诊断：verify 成功、build-pages 失败后，diagnose-pages 独立作业只取得 contents/read 与 pages/read，GET 仓库和 Pages 信息。仅记录明确的 boolean 状态、有效的 Pages 构建方式/站点 URL、HTTP/网络/响应校验结果及运行身份，不保存凭据、原始错误正文、头或未知字段。结果限于 Actions 日志与摘要，不写 Git 分支或修改站点，不把诊断成功当作发布成功。外部读取受限时由用户提供这段限定 JSON；私有状态、套餐、未启用与不可读各按真实证据区分。

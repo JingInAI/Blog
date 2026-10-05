@@ -1,6 +1,6 @@
 # 工程初始化执行记录
 
-执行日期：2026-10-05。实施基线：review-07；当前修订：implementation-05。工程阶段 P0–P6 已完成并通过本地验收；初始化提交已推送，首次 P7 作业在 Configure Pages 读取元数据失败，修订与 T14 验收继续进行，真实 API 未接入。用户已明确选择 Vue 作为线上构建目标。
+执行日期：2026-10-05。实施基线：review-07；当前修订：implementation-06。工程阶段 P0–P6 已完成并通过本地验收；初始化提交已推送，首次 P7 作业在 Configure Pages 读取元数据失败，修订与 T14 验收继续进行，真实 API 未接入。用户已明确选择 Vue 作为线上构建目标。
 
 ## 已实施内容
 
@@ -37,11 +37,11 @@
 | npm ci --ignore-scripts | 通过；锁文件安装成功 |
 | npm run typecheck | 通过 |
 | npm run check:boundaries | 通过 |
-| npm test | 52 项全部通过，无跳过或 todo |
+| npm test | implementation-06：56 项全部通过，无跳过或 todo，含 4 项只读 Pages 诊断回归 |
 | npm run build:vue | 通过，dist/vue |
 | npm run build:react | 通过，dist/react |
 | npm run test:e2e | 36 项全部通过：Vue/React × 根路径/Blog 子路径 ×（5 组静态 + 3 组 HTTP 场景），另有两框架各 2 项扩展主题表单场景 |
-| npm run check | 完整链通过，包含以上类型/边界/测试/构建/浏览器验证 |
+| npm run check | implementation-05 完整链通过：52 项逻辑测试、双构建、36 项浏览器；implementation-06 仅改诊断/工作流/文档，另行通过 typecheck、边界、56 项逻辑测试及 actionlint |
 | 开发/预览烟雾检查 | dev:vue 5173、dev:react 5174、preview:vue 4173 的首页和 current.json 均返回 200 |
 | 最终公开产物审计 | 两框架指针/清单/目录/站点版本一致；目录/正文为空，站点仅 schemaVersion；无符号链接、测试、文档或原始应用配置文件 |
 | git diff --check | 通过 |
@@ -99,6 +99,15 @@ T09a/b 与 T13a/b/c/d 各有独立本地证据，整组本地验收完成。测�
 - 核对固定 SHA 的 [action.yml](https://github.com/actions/configure-pages/blob/983d7736d9b0ae728b81ab479565c72886d7745b/action.yml) 及 [API 实现](https://github.com/actions/configure-pages/blob/983d7736d9b0ae728b81ab479565c72886d7745b/src/api-client.js)：enablement 默认为 false；首次创建必须提供普通 GITHUB_TOKEN 以外的适当凭据。按 [创建 Pages API 权限](https://docs.github.com/en/rest/pages/pages#create-a-github-pages-site)，受限管理凭据需要 Pages/write 与 Administration/write。
 - 工作流增加可选 Actions secret `PAGES_SETUP_TOKEN`，配置时向官方 action 传入该凭据和 enablement；未配置仍只读取站点。保持 build-pages 的原 GITHUB_TOKEN 权限，未加入无效的 administration 权限项，也未盲目开大权限。失败提供操作摘要，保持作业失败并阻止构建/上传。
 - `docs/usage.md` 补齐设置状态、首次创建、仓库方案范围和凭据配置排查。已请求用户提供 Settings → Pages 实际提示以确认原因；不能仅凭 404 确定仓库可见性、账号方案或站点是否存在。新增启用入口与诊断通过 actionlint；尚无配置 setup secret 或创建 Pages 成功的证据。
+
+## implementation-06 只读发布诊断
+
+- 复查未认证 Pages/Actions API 得到 403，响应明确为请求额度耗尽；候选 Pages 地址仍为 404。这些结果不能代替最新受认证作业日志。当前没有 gh、GH_TOKEN/GITHUB_TOKEN 环境认证或 GitHub 连接工具；SSH 仍只能提供工程推送能力。
+- 自动审批拒绝了为诊断作业授予 contents/write 并持续更新远端诊断分支的补丁，理由为持久化权限和远端写入范围超过当前排查授权。核对后确认补丁没有落地；没有以其他执行方式绕过拒绝。
+- 改用独立 diagnose-pages 作业，仅在默认分支非 PR、verify 成功而 build-pages 失败时运行，权限只有 contents/read 与 pages/read。脚本对 GitHub 做两个 GET，禁止重定向，15 秒超时，只选择受校验字段；结果仅输出到 Actions 日志和摘要。
+- `tests/pages-diagnostics.test.ts` 四项验证明确事实与固定 GitHub 请求范围、401/403/404/429/500 状态不复制错误正文、非法 JSON 字段/含凭据或查询的 URL 拒绝、网络错误不泄露凭据，以及非法上下文在请求前拒绝。
+- 本轮 typecheck、check:boundaries、npm test 全部通过；逻辑/构建/边界测试共 56 项，actionlint 通过。未改应用渲染代码；最近完整双框架构建和 36 项浏览器证据仍来自 implementation-05，本轮未重复浏览器验收。
+- 已请求用户提供新工作流结果或 Settings → Pages 的实际文字提示；diagnose-pages 的限定 JSON 将进一步确认平台事实，不要求提供 token，不推断账号套餐或宣告发布成功。
 
 ## 外部未完成条件
 

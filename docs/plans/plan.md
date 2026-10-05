@@ -1,6 +1,6 @@
 # 博客项目实施计划
 
-修订标识：implementation-05，基于 review-07；实际证据见 [execution.md](execution.md)。
+修订标识：implementation-06，基于 review-07；实际证据见 [execution.md](execution.md)。
 
 状态：P0–P6 工程初始化已完成，本地完整验收通过；初始化提交已推送，首次 P7 作业在 Configure Pages 读取元数据失败。失败修订与 T14 保持进行中，含 T14 的验收项保持未勾选，本地部分证据见执行记录。
 
@@ -333,3 +333,13 @@ P7/T14 与真实后端集成仍按外部条件验收，不由受控 API 场景�
 - [ ] 核实 Settings → Pages 实际站点状态/账号能力，必要时由所有者完成启用或配置受限管理 secret，重新运行后验证部署及 T14。
 
 SSH 可以提交代码，不能替代 Pages 管理凭据；已请求用户提供 Settings → Pages 的实际提示。工作流改动不证明平台条件已经满足。
+
+## 24. implementation-06 受认证只读诊断
+
+- [x] 复查最新访问：未认证 API 因额度耗尽返回 403，候选 Pages 返回 404；不能当作最新受认证作业结果。
+- [x] 增加 diagnose-pages：仅默认分支、非 PR、verify 成功且 build-pages 失败时运行，只有 contents/read 与 pages/read。
+- [x] 诊断只保留运行身份、仓库 private/hasPages、Pages 请求状态和有效构建方式/站点地址；HTTP、网络及非法响应分别记录，凭据、错误原文、头和额外字段排除。
+- [x] 四项新回归与 typecheck、actionlint 通过；文档明确诊断仅写日志/摘要，不写分支、不修改站点，不掩盖失败部署。
+- [ ] 推送只读诊断修订，取得真实作业 JSON，确认平台条件并继续 P7/T14。
+
+自动审批拒绝了授予诊断作业 contents/write 并写入专用远端分支的方案，该补丁没有落地。改为上述仅写日志与摘要的只读方案，不绕过拒绝或扩张工作流写入权限。
