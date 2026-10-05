@@ -1,0 +1,37 @@
+{
+  "name": "content-driven-blog",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:vue": "tsx scripts/site.ts dev vue",
+    "dev:react": "tsx scripts/site.ts dev react",
+    "build:vue": "tsx scripts/site.ts build vue",
+    "build:react": "tsx scripts/site.ts build react",
+    "build": "tsx scripts/site.ts build",
+    "preview:vue": "vite preview --outDir dist/vue --host 127.0.0.1",
+    "preview:react": "vite preview --outDir dist/react --host 127.0.0.1",
+    "typecheck": "tsc --noEmit",
+    "check:boundaries": "tsx scripts/check-boundaries.ts",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "test:e2e": "playwright test",
+    "check": "npm run typecheck && npm run check:boundaries && npm test && npm run build:vue && npm run build:react && npm run test:e2e"
+  },
+  "devDependencies": {
+    "@babel/parser": "7.29.9",
+    "@babel/types": "7.29.8",
+    "@playwright/test": "1.63.0",
+    "@types/node": "26.6.4",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vite": "8.3.2"
+  }
+}

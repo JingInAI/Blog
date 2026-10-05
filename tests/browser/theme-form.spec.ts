@@ -1,0 +1,50 @@
+import { expect, test } from '@playwright/test';
+for (const [framework, port] of [['vue', 4310], ['react', 4311]] as const) {
+  test(`${framework}: typed theme defaults, fractional numbers and clearing optional values survive submission and refresh`, async ({ page }) => {
+    await page.goto(`http://127.0.0.1:${port}/`);
+    await page.getByLabel('网页风格').selectOption('minimal-list');
+    await expect(page.getByLabel('JSON 枚举')).toHaveValue('null');
+    await expect(page.getByLabel('必填布尔值')).not.toBeChecked();
+    await page.getByRole('button', { name: '应用风格' }).click();
+    const committed = page.locator('#committed');
+    await expect(committed).toHaveText(JSON.stringify({ version: 1, contentIds: [], themeId: 'minimal-list', themeVersion: 1, themeOptions: { enabled: false, choice: null, caption: '' } }));
+    await page.getByLabel('可选数字').fill('1.25');
+    await page.getByLabel('JSON 枚举').selectOption(JSON.stringify({ size: 2 }));
+    await page.getByRole('button', { name: '应用风格' }).click();
+    await expect(committed).toContainText('"amount":1.25');
+    await expect(committed).toContainText('"choice":{"size":2}');
+    await page.reload();
+    await expect(page.getByLabel('可选数字')).toHaveValue('1.25');
+    await expect(page.getByLabel('JSON 枚举')).toHaveValue('{"size":2}');
+    await page.getByLabel('可选数字').fill('');
+    await page.getByRole('button', { name: '应用风格' }).click();
+    await expect(committed).not.toContainText('"amount"');
+    await page.reload();
+    await expect(page.getByLabel('可选数字')).toHaveValue('');
+    await expect(page.getByRole('alert')).toHaveCount(0);
+  });
+  test(`${framework}: unset required options stay unset, explicit false/null commit, optional enum can be cleared`, async ({ page }) => {
+    await page.goto(`http://127.0.0.1:${port}/`);
+    await page.getByLabel('网页风格').selectOption('card-grid');
+    await expect(page.getByLabel('JSON 枚举')).toHaveValue('');
+    await page.getByRole('button', { name: '应用风格' }).click();
+    await expect(page.getByRole('alert', { name: '' })).toHaveCount(2);
+    await expect(page.locator('#committed')).toHaveText('null');
+    await page.getByLabel('必填布尔值').check();
+    await page.getByLabel('必填布尔值').uncheck();
+    await page.getByLabel('JSON 枚举').selectOption('null');
+    await page.getByLabel('可选枚举').selectOption('"first"');
+    await page.getByRole('button', { name: '应用风格' }).click();
+    await expect(page.locator('#committed')).toContainText('"enabled":false');
+    await expect(page.locator('#committed')).toContainText('"choice":null');
+    await expect(page.locator('#committed')).toContainText('"optional":"first"');
+    await page.getByLabel('可选枚举').selectOption('');
+    await page.getByRole('button', { name: '应用风格' }).click();
+    await expect(page.locator('#committed')).not.toContainText('"optional"');
+    await page.reload();
+    await expect(page.getByLabel('JSON 枚举')).toHaveValue('null');
+    await expect(page.getByLabel('必填布尔值')).not.toBeChecked();
+    await expect(page.getByLabel('可选枚举')).toHaveValue('');
+    await expect(page.getByRole('alert')).toHaveCount(0);
+  });
+}

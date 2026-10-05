@@ -1,0 +1,17 @@
+{
+  "name": "@blog/render-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@blog/contracts": "*",
+    "@blog/theme-contracts": "*",
+    "remark-gfm": "4.0.1",
+    "remark-parse": "11.0.0",
+    "unified": "11.0.5"
+  },
+  "devDependencies": {
+    "@types/mdast": "4.0.4"
+  }
+}

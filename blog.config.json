@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "siteId": "blog",
+  "source": { "kind": "static", "sourceId": "public-content" },
+  "basePath": "/"
+}
