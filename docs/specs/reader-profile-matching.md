@@ -70,3 +70,5 @@ npm run analyze:content -- content/posts/understanding-rsi.md
 逻辑测试覆盖原文位置/层级、分组、标题优先、排除代码/路径、Unicode/转义、配置兼容、目录/分页/错误、保存/分享、脚注和只读分析。浏览器覆盖 Vue/React × 静态/API × 根/Blog 路径，验证即时与连续操作、图片解码、定位、脚注跳转、无匹配、全文恢复和持久化。真实长文及最终发布证据记入 [执行记录](../plans/execution.md)。
 
 understanding-rsi 原文件 SHA-256 为 57d986fa77ed511794786cbe8b5401e519c1ec4d0f6c20caffa64861c896c140，正文 SHA-256 为 72f422af1216306303dc3e6364794cf3c1682f649414e546364d4c19c3ef2dad。本任务不修改 content/。
+
+最终本地验证通过类型/模块边界、180 项逻辑/构建、双框架构建及 113 项浏览器。发布提交 d7afecf62bae1a931fe690e1ebec5272ddde441f 的 [Actions 运行 37470810830](https://github.com/JingInAI/Blog/actions/runs/37470810830) 中 verify/build-pages/deploy 全部成功；实际线上 Vue 十二标签/组合、原文位置与正文/图片、分享保存/全文恢复和手机通过。30 个公开文件 SHA-256 与候选一致；文档、原文件、CLI 和分析报告路径均 404。证据 .generated/reader-profile/ 不进入公开产物。

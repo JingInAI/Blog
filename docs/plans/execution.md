@@ -421,3 +421,7 @@ npm run check
 - 最后复核区分空候选范围与目录失败：无候选显示范围提示；仅全部候选分析完成后才显示没有匹配，目录失败不误报不适合。十六项矩阵浏览器用例增加这两个场景，最后全量检查重新执行，日志 /tmp/blog-reader-full-final.log；真实双框架候选也重新构建验收。
 
 - 最终 /tmp/blog-reader-full-final.log 的类型/边界、180 项逻辑/构建、双构建及 113 项浏览器均通过，含空候选和目录失败补验。随后补齐第一标题前无标题引言作为根上下文，类型及 180 项逻辑重新通过（/tmp/blog-reader-final-unit.log），重新构建两候选并重复所有真实长文验收通过，原文片段/位置与完整正文、图片完全对应，日志 /tmp/blog-reader-real-final.log。无标题引言新增源结构断言；发布 CI 继续对最终提交运行整套检查。
+
+- 发布提交 d7afecf62bae1a931fe690e1ebec5272ddde441f 推送 main，运行 [37470810830](https://github.com/JingInAI/Blog/actions/runs/37470810830)。匿名 GitHub API 额度耗尽，环境代理能读取运行 ID 但作业查询也达到限额；改用公开运行页面（HTTP 200）验证精确完整 commit 和作业状态 SVG 的 aria-label，verify/build-pages/deploy 均 completed successfully，诊断作业跳过。原始页面及解析状态保存在 actions-run.html/actions-status.json，不猜测不可读取的日志。
+- 13:32 UTC 实际 Vue 线上页面全部十二标签、工程/参数组合、原文位置/片段文字及图片 alt/解码、分享/显式保存/刷新/手机/全文恢复通过；完整正文的 27 标题、30 链接、22 图及既有全部视觉参数保持，页面/非预期响应/网络错误为空。工程/参数组合匹配五片段并保留一上下文章节，展示七张原图；报告 online-longform.json。
+- 30 个线上文件全部 HTTP 200、SHA-256 与最后 Vue 候选一致；九个源码/原 Markdown/文档/配置/分析报告路径均 404，报告 online-artifacts.json。源码与样式候选分别 index-D1D-SFk8.js/index-y_ABu95H.css，内容 buildId 仍 9925b008ea691efcbd916dc9530429ff557394c391e5c48b811cf05af835b8db。原文和 22 原图未改；证据位于 .generated/reader-profile/，收尾文档普通提交不重复部署。

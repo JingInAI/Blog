@@ -4,7 +4,7 @@
 
 内容模块当前包含一篇用户授权的 RSI 长文，标题、摘要、标签和 22 张配图来自指定原文；导入规则和测试见 [内容导入记录](docs/specs/understanding-rsi-import.md)。框架在构建时选择，内容和风格在网页中选择。
 
-线上站点：[https://jinginai.github.io/Blog/](https://jinginai.github.io/Blog/)，Vue 已发布 26 项展示参数与更多档位；[对应的 Actions 运行](https://github.com/JingInAI/Blog/actions/runs/37455168640) 验证、构建和部署全部成功。
+线上站点：[https://jinginai.github.io/Blog/](https://jinginai.github.io/Blog/)，Vue 已发布十二类自选阅读标签与原文片段筛选，保留 26 项展示参数；[对应的 Actions 运行](https://github.com/JingInAI/Blog/actions/runs/37470810830) 验证、构建和部署全部成功。全部标签/组合、全文/配图、分享保存和手机验收通过，30 个线上文件与候选哈希一致。
 
 只读分析指定文章：`npm run analyze:content -- content/posts/understanding-rsi.md`，结构和标签依据报告生成在 .generated/reader-analysis/，原文件保持。详见 [阅读标签设计](docs/specs/reader-profile-matching.md)。
 
