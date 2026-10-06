@@ -432,3 +432,5 @@ LLM 给出的标量仍属于分数；只有文字判断、解释或批评才归�
 来源：[Awesome RSI 原文](https://prism-shadow.github.io/awesome-rsi/#blog/understanding-rsi)
 
 原文发布日期：2026-09-03
+
+来源版本：`36e91f8fed67e2cd0c761126f91042513df5d6ae`

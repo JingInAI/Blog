@@ -327,3 +327,6 @@ npm run check
 - 双框架 `/Blog/` 生产候选均构建成功，共用 buildId 6090834eca8ee395a7394ae8f849959c67624deec9689c1278ac22c0a78ae40c。两框架各一项长文验收均通过：正文全部文本、27 标题、30 链接、22 alt/图片解码、两主题、摘要不加载图片、详情刷新、分享/保存、个人刷新、1280/390 像素无溢出；无脚本或网络错误。
 - `.generated/source-import/local-longform.json`、import-provenance.json、asset-provenance.json 与截图为本机忽略证据。详细规则见 [RSI 导入记录](../specs/understanding-rsi-import.md)。原文公式按原始 LaTeX 文本显示，不声称复刻源站 KaTeX 排版。
 - 已准备真实旧版本会话，在本次新内容上线后验证目录失效提示、显式更新及分享/风格/空选择保留；发布和线上结果取得后追加。
+
+- 首轮发布提交 54e20bc571f5f8a404d2af6c129ddb14351b44b5 的 [Actions 运行 37433009889](https://github.com/JingInAI/Blog/actions/runs/37433009889) 中 verify/build-pages/deploy 全部成功。真实线上重复长文的 12 类检查通过；30 个文件 SHA-256 与 Vue 候选完全一致，源码/配置/文档的 Pages 地址为 404。
+- 首次旧空目录场景等待更新提示未通过，未计作跨发布成功：StaticContentSource 已缓存目录，刷新不会重新下载或探测；这符合固定会话版本设计。后续改用真实旧会话中未缓存正文的详情请求，避免把缓存行为误判为产品故障。保留首次证据，新增来源附记中的已核验源快照编号后进行第二次内容发布；正文其余部分与配图均不变。
