@@ -1,6 +1,6 @@
 # 工程初始化执行记录
 
-执行起始日期：2026-10-05；最新本地审查完成日期：2026-10-06。实施基线：review-07；当前修订：implementation-17。工程阶段 P0–P6 与 implementation-17 完整本地验收已完成。用户于 2026-10-06 明确恢复 P7 发布、失败排查及 T14；当前正在准备真实 Vue 发布。此前 Configure Pages 失败记录保留；真实 API 未接入。
+执行起始日期：2026-10-05；最新本地审查完成日期：2026-10-06。实施基线：review-07；当前修订：implementation-17。工程阶段 P0–P6 与 implementation-17 完整本地验收已完成。用户于 2026-10-06 明确恢复 P7 发布、失败排查及 T14；首次 Vue Pages 发布及当前空内容站点线上验收已完成，正文/图片/跨内容发布的真实环境验收保持待办。此前 Configure Pages 失败记录保留；真实 API 未接入。
 
 ## 已实施内容
 
@@ -13,7 +13,7 @@
 | P4 | 唯一 Markdown/GFM 解析、安全只读 AST、原始 HTML 文本、链接诊断、资源/alt 解析、脚注及原文错误入口 | content.test.ts、edge-cases.test.ts：T09a |
 | P5 | Vue/React 适配器、两主题、参数草稿、站点/操作反馈、图片开始/完成/脱离/重试、移动端布局及开发实例隔离 | 65 项 Chromium 集成场景：24 项静态来源 + 20 项 HTTP 来源 + 8 项扩展主题表单 + 5 项开发回归 + 8 项双来源富正文，边界/扩展测试 T11 |
 | P6 | 根/子路径、详情/历史、严格分享协议、版本变化显式重载、锁文件 CI/Pages 工作流、使用与扩展文档 | sharing.test.ts：T12，浏览器真实静态 V1→V2：T13d，产物审计与文档命令检查 |
-| P7 | 实际 Pages 地址/部署日志、线上跨发布场景、可选真实 API | 用户要求暂缓；此前推送与首次 Configure Pages 404 保留，不计入本轮本地验收 |
+| P7 | 实际 Pages 地址/部署日志、线上跨发布场景、可选真实 API | 2026-10-06 首次 Vue 发布成功，当前空内容线上验收通过；正文/图片/跨内容发布及真实 API 另记，历史失败保留 |
 
 源码与测试均在当前工作区。早期 Git 写入受限时使用 `/tmp/blog-release-20261005` 独立检出；2026-10-06 根据用户“git提交所有修改”的明确授权，已在当前工作区 main 提交全部 95 个未忽略文件（6cbb3d8）。`.blog-init-probe` 和 `blog-architecture.json` 随此本地提交保留，但构建器不会上传它们。
 
@@ -31,6 +31,8 @@
 - 文内锚点/脚注移动当前正文焦点，不改唯一哈希路由；非法路由显示固定恢复入口。
 
 ## 本次实际运行结果
+
+下表保留 implementation-17 的 153/65 本地基线；最新恢复发布阶段的 155/65 完整复核、真实部署及线上证据见文末。
 
 | 检查 | 结果 |
 | --- | --- |
@@ -304,3 +306,14 @@ npm run check
 - 复现根因：本机 NO_COLOR 禁用 Vite/picocolors 颜色，远端开启颜色后 Local 与冒号之间插入 ANSI 控制字符，日志中不存在连续的 Local:。移除 NO_COLOR 并启用 CI/GITHUB_ACTIONS/FORCE_COLOR 后，原 Vue SIGTERM 测试在同一断言失败，日志 `/tmp/blog-ci-readiness-color-before.log`；服务器实际已监听，属于测试就绪判断错误。
 - 修复改为等待真实 HTTP 200 并读完响应，十秒截止仍保留；六项测试子进程显式启用颜色且移除 NO_COLOR，不再依赖人类可读日志格式。关闭退出码、监听关闭、生成目录清理及单次/重复信号断言均保留。六项全部通过，日志 `/tmp/blog-ci-readiness-after.log`；类型/actionlint/空白检查通过。浏览器开发夹具原已使用 HTTP 就绪，不存在同类文字依赖。
 - 正在相同 GitHub Actions 彩色环境下完整本地复核，并推送修复以重新验证真实发布。
+
+
+### 最终发布与线上验收结果
+
+- 在移除 NO_COLOR、CI/true、GITHUB_ACTIONS/true、FORCE_COLOR/1 的实际故障条件下，完整本地 `npm run check` 退出 0：类型与模块边界、155 项逻辑/构建、双框架生产构建、65 项 Chromium 全部通过，无失败、取消、跳过或 todo；日志 `/tmp/blog-pages-github-check.log`。
+- 修复提交 **0b4d399f26589f9240f9b549bc899459edb8806f** 已推送 main。真实运行 [37428114955](https://github.com/JingInAI/Blog/actions/runs/37428114955) 的 **verify、build-pages、deploy 全部 success**，diagnose-pages 按规则 skipped；运行整体 completed/success。部署成功于 2026-10-06 07:15 UTC，未覆盖或强制推送远端历史。
+- 实际站点：[https://jinginai.github.io/Blog/](https://jinginai.github.io/Blog/)，Vue，静态来源，部署根路径 `/Blog/`；buildId 为 `c89041b3bc4516b5264c267edc16e605b2ec09e428e28ee979b640f516999f54`。
+- 真实线上 Chromium 验收于 07:16 UTC 通过：首页 HTTPS/200、Vue 渲染、JS/CSS 的 `/Blog/assets/` 路径、同版本指针/清单/目录/站点、两主题、个人配置刷新、分享刷新、显式保存清理地址、重置、坏分享恢复、390 像素无横向溢出、缺失详情刷新且不补标题，以及非法哈希返回首页恢复。无页面异常、失败请求或 HTTP 错误。报告 `.generated/pages-release/online-smoke.json`，桌面/手机截图为同目录 `online-desktop.png` / `online-mobile.png`；均是本机忽略证据，不上传至博客。
+- 独立线上产物核对通过：七个公开文件 HTTP/200、每个 SHA-256 与 Vue `/Blog/` 候选完全一致；README.md、package.json、blog.config.json 的站点请求均为 404。记录 `.generated/pages-release/online-artifacts.json`；真实运行的作业/步骤记录为 `actions-status.json`。
+- 内容真实性：生产目录仍为空，正文映射为空，站点信息仅 schemaVersion；没有加入测试文章、虚构作者或站点资料。当前空内容站点首次发布已完成；真实文章/图片与已打开旧页跨内容发布的故障/重载环境验证保持待办，已有本地跨版本证据不冒充线上验收。真实 API 未启用，不计生产 CORS/授权验收。
+- 后续普通 push/PR 仅验证；更新站点时在默认分支手动 publish/true，或推送标题以 `[publish-pages] ` 开头的显式发布提交。此次收尾只更新文档，普通推送不会重复部署。

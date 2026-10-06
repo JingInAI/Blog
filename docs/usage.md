@@ -2,7 +2,7 @@
 
 项目将作者内容、共享控制器和 Vue/React 渲染适配器分开。生产内容初始为空；没有默认风格或默认文章。先应用风格，再选择内容。测试站点、文章及图片仅由测试脚本生成，不属于生产内容。
 
-用户已于 2026-10-06 明确恢复 P7/T14 线上发布。以下本地命令不需要 GitHub 认证或 Pages 设置；实际线上状态和验收证据见 [执行记录](plans/execution.md)。
+首次 Vue 发布已于 2026-10-06 完成，地址 [https://jinginai.github.io/Blog/](https://jinginai.github.io/Blog/)；[真实 Actions 运行](https://github.com/JingInAI/Blog/actions/runs/37428114955) 成功，当前空内容站点的线上验收通过。以下本地命令不需要 GitHub 认证或 Pages 设置；实际版本、证据与未验证范围见 [执行记录](plans/execution.md)。
 
 ## 本地开发
 
@@ -93,7 +93,7 @@ BLOG_FRAMEWORK=vue BLOG_BASE_PATH=/Blog/ npm run build
 
 `BLOG_BASE_PATH=/` 用于域名根目录。所有静态资源使用该路径，详情用 `#/content/<编码ID>`，因此详情刷新不要求服务端重写。
 
-GitHub Pages 设置、可选仓库变量和工作流成功结果需要在真实仓库验证。本地构建通过不代表线上已发布。首次发布后检查首页、详情刷新、图片、分享/保存/恢复，再用已打开旧页面检查一次跨发布更新。
+此次真实发布已验证 HTTPS 首页与 JS/CSS、内容版本清单、两风格、个人配置刷新、分享刷新、显式保存、重置、坏分享、缺失详情刷新、非法路由恢复及 390 像素布局；线上七个公开文件 SHA-256 与 Vue `/Blog/` 候选完全一致。目前没有作者文章或图片，未验证实际正文/图片及旧会话跨内容发布，真实 API 未接入；添加作者内容后继续这些环境验收。
 
 官方资料：[Pages 自定义工作流](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)、[configure-pages 输出](https://github.com/actions/configure-pages/blob/main/action.yml)、[Vite](https://vite.dev/guide/)、[Playwright CLI](https://playwright.dev/docs/test-cli)。
 

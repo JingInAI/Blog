@@ -2,7 +2,7 @@
 
 修订标识：implementation-17，基于 review-07，与计划同步实施。最新字节、来源配置与输出审查见 [boundary-lifecycle-audit.md](boundary-lifecycle-audit.md)，前轮记录见 [输入准确性](input-fidelity-audit.md)、[版本与生命周期](version-lifecycle-audit.md)、[内容完整性](integrity-audit.md) 和 [可靠性审查](reliability-audit.md)。
 
-状态：P0–P6 已实施，implementation-17 完整本地验收已通过；用户于 2026-10-06 明确恢复 P7 发布与 T14 线上验收，当前尚待实际部署验证。此前 Pages 元数据读取失败记录保留，当前状态见 [执行记录](../plans/execution.md)。
+状态：P0–P6 已实施，implementation-17 完整本地验收已通过；用户于 2026-10-06 明确恢复发布，首次 Vue Pages 部署及当前空内容站点的线上验收通过；T14 的实际正文/图片/跨内容发布部分仍待作者内容与下一次内容发布。此前 Pages 元数据读取失败记录保留，当前状态见 [执行记录](../plans/execution.md)。
 
 “必须”为验收要求，“建议”为可替换实现选择。计划见 [plan.md](../plans/plan.md)。
 
@@ -765,3 +765,6 @@ implementation-17 将输入准确性扩展到原始字节：本地文章/站点/
 
 
 2026-10-06 用户明确恢复线上发布。工作流保留默认分支手动 publish/true，另接受默认分支 push 的最后一条提交消息以 `[publish-pages] ` 开头作为显式发布请求，供只有 SSH 权限的环境使用。普通 push、PR、其他分支与标签均不部署，两种发布入口使用相同门槛并等待完整 verify 成功；默认分支并发运行不取消既有部署，Pages 部署继续串行。新增入口不赋予首次创建站点的管理权限，仍需已启用的 Pages 或显式配置的受限 setup secret。
+
+
+首次线上发布于 2026-10-06 完成：Vue、静态来源、https://jinginai.github.io/Blog/，源码 0b4d399，对应 Actions 运行 37428114955 的 verify/build-pages/deploy 全部成功。真实 Chromium 验证当前空内容的路由、两主题、分享与个人配置恢复；线上七个文件与已验收候选逐字节哈希一致。没有作者文章和图片时不添加虚构内容，T14 中真实正文/图片和跨内容发布部分保持待办；真实 API 未启用。CI 的开发服务就绪测试改为 HTTP 200，显式彩色输出补验避免终端格式依赖；诊断只公开限定元数据，详见执行记录。
