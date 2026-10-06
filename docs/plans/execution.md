@@ -400,3 +400,8 @@ npm run check
 - 修正词间距计算值断言后，八项新增浏览器均通过（/tmp/blog-expanded-targeted-final.log），遍历全部 116 个枚举值，新配色九类文字对比度抽样均不低于 4.5:1。独立 Vue/React /Blog/ 真实 RSI 候选验收通过（local-longform.json）：24 枚举组合、全量正文/27 标题/30 链接/22 alt/22 图、恢复默认、分享保存刷新及桌面/手机正确，页面和非预期网络错误为空；250% 字号 40px、行距 96px、段间距 120px、极窄栏 352px。原文和原图不变，脚本和 CSS 改变。
 
 - CI 标记下 npm run check 全部通过类型/模块边界、169 项逻辑/构建、双框架构建及 97 项浏览器，日志 /tmp/blog-expanded-full.log；既有功能与新增两项逻辑/八项浏览器都纳入完整检查。设计、计划、使用、扩展和配置文档已同步，Markdown 本地链接与 Git 空白检查通过。
+
+- 测试后 25 个固定端口均关闭，dev/build 实例目录为空，Playwright 最后状态 passed，结果 local-checks.json。发布提交 b9b1cf699fe49c4013c581f73be60e32bd480fe0 已推送，Actions 运行 37455168640；最终部署及真实线上结果另行追加。
+
+- 发布提交 b9b1cf699fe49c4013c581f73be60e32bd480fe0 的 [Actions 运行 37455168640](https://github.com/JingInAI/Blog/actions/runs/37455168640) 中 verify/build-pages/deploy 全部成功。11:19 UTC 实际 Vue 页面的 24 枚举组合、250% 字号及最大文字间距、图片/标签样式、全量正文/27 标题/30 链接/22 alt/22 图、双风格、分享/保存/刷新和桌面/手机均通过，样式测量与候选一致，页面和非预期请求错误为空，结果 online-longform.json。
+- 30 个线上文件全部 HTTP 200、SHA-256 与本轮 Vue 候选逐一一致，核对的源码/配置/文档路径均 404；报告 online-artifacts.json、Actions 状态与截图保存在 .generated/expanded-reading/，不进入公开产物。已更新设计、计划、使用和配置文档；原文、原图及历史证据保留。收尾普通文档提交不重复部署。
