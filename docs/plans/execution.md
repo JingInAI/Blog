@@ -349,3 +349,6 @@ npm run check
 - 完整本地检查通过类型、边界、155 项逻辑/构建、双框架构建和 69 项浏览器，/tmp/blog-theme-full-check.log；定向四项随后纳入完整浏览器检查。
 - 双框架 /Blog/ 真实 RSI 验收通过，正文、27 标题/30 链接/22 alt 与图片解码正确，无脚本或非预期网络错误；卡片宽松/紧凑的文章顶部内边距为 28.8/16px，正文行高 27.2/24px、段落外边距 16/9.6px。简洁列表顶部边框为 0、背景透明；详情全文和桌面/手机布局、分享保存及刷新正确。证据为 .generated/theme-fix/local-longform.json。
 - 内容 buildId 与上一发布相同，源正文和 22 张原图未修改；前端 JavaScript、CSS 和 index.html 引用改变，线上需刷新已打开的旧页面加载修复。
+
+- 发布提交 78d7d3d92955fa983168e868f4ffaaac2ce02d65 的 [Actions 运行 37437454539](https://github.com/JingInAI/Blog/actions/runs/37437454539) 中 verify/build-pages/deploy 全部成功。08:42 UTC 实际线上外观测量与本地一致，全文/27 标题/30 链接/22 alt/22 图、分享保存及刷新、桌面/手机均通过，无页面或非预期网络错误；online-longform.json 保存结果。
+- 30 个线上文件均 HTTP 200、SHA-256 与 Vue 候选一致，online-artifacts.json 保存结果；源码、配置和审查文档的测试路径均为 404。比较截图与手机正文截图保存于 .generated/theme-fix/，不进入发布产物。更新设计、计划、使用和修复文档，历史失败和原内容发布报告保留。
