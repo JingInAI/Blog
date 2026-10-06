@@ -1,5 +1,34 @@
 import { expect, test } from '@playwright/test';
 for (const [framework, port] of [['vue', 4310], ['react', 4311]] as const) {
+  test(`${framework}: immediate selects retain the valid theme and stored record until required options are complete`, async ({ page }) => {
+    const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
+    await page.goto(`http://127.0.0.1:${port}/`);
+    await page.getByLabel('网页风格').selectOption('minimal-list');
+    await expect(page.locator('#committed')).toContainText('"themeId":"minimal-list"');
+    const initial = await page.locator('#committed').textContent();
+    const readStored = () => page.evaluate(() => localStorage.getItem('blog:theme-form-fixture:theme-fixture:display:v1'));
+    const stored = await readStored();
+    await page.getByLabel('网页风格').selectOption('card-grid');
+    await expect(page.getByRole('alert')).toHaveCount(2);
+    await expect(page.locator('#committed')).toHaveText(initial!);
+    expect(await readStored()).toBe(stored);
+    await page.getByLabel('必填布尔值').check();
+    await expect(page.locator('#committed')).toHaveText(initial!);
+    await page.getByLabel('JSON 枚举').selectOption('null');
+    await expect(page.locator('#committed')).toContainText('"themeId":"card-grid"');
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    const complete = await page.locator('#committed').textContent();
+    const saved = await readStored();
+    await page.getByLabel('JSON 枚举').selectOption('');
+    await expect(page.getByRole('alert')).toHaveCount(1);
+    await expect(page.locator('#committed')).toHaveText(complete!);
+    expect(await readStored()).toBe(saved);
+    await page.getByLabel('JSON 枚举').selectOption('null');
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await page.reload();
+    await expect(page.locator('#committed')).toHaveText(complete!);
+    expect(errors).toEqual([]);
+  });
   test(`${framework}: typed theme defaults, fractional numbers and clearing optional values survive submission and refresh`, async ({ page }) => {
     await page.goto(`http://127.0.0.1:${port}/`);
     await page.getByLabel('网页风格').selectOption('minimal-list');

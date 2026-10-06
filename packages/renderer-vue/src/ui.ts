@@ -74,26 +74,33 @@ export function renderUi(model: ViewModel, context: RendererContext, state: UiSt
     const selectedTheme = state.draftTheme || config?.themeId || '';
     const descriptor: ThemeChoice | undefined = model.themes.find(t => t.id === selectedTheme);
     const options = state.draftTheme ? state.draftOptions : config?.themeOptions ?? {};
-    function changeOption(key: string, value: JsonValue | undefined): void {
+    function changeOption(key: string, value: JsonValue | undefined, immediate = false): void {
       const next = { ...options };
+      if (value === undefined && immediate && descriptor && Object.hasOwn(descriptor.defaults, key)) value = descriptor.defaults[key];
       if (value === undefined) delete next[key];
       else Object.defineProperty(next, key, { value, writable: true, enumerable: true, configurable: true });
       setState({ ...state, draftTheme: selectedTheme, draftOptions: next });
+      if (immediate && selectedTheme) context.dispatch({ type: 'set-theme', themeId: selectedTheme, options: next });
+    }
+    function changeTheme(id: string): void {
+      const next = { ...(model.themes.find(t => t.id === id)?.defaults ?? {}) };
+      setState({ ...state, draftTheme: id, draftOptions: next });
+      if (id) context.dispatch({ type: 'set-theme', themeId: id, options: next });
     }
     const ids = config?.contentIds ?? [];
     editor = el('aside', { className: 'editor', 'aria-label': '展示设置' },
       el('h2', null, '展示设置'),
       el('form', { onSubmit: (event: { preventDefault(): void }) => { event.preventDefault(); context.dispatch({ type: 'set-theme', themeId: selectedTheme, options }); } },
-        el('p', { className: 'muted' }, '调整风格或间距后，点击“应用风格”更新页面。'),
-        el('label', null, '网页风格', el('select', { 'aria-label': '网页风格', value: selectedTheme, onChange: (e: { target: EventTarget | null }) => { const id = valueFrom(e).value; setState({ ...state, draftTheme: id, draftOptions: { ...(model.themes.find(t => t.id === id)?.defaults ?? {}) } }); } },
+        el('p', { className: 'muted' }, descriptor?.options.some(d => d.kind === 'string' || d.kind === 'number') ? '风格和选择项即时生效；文字或数字参数填写后点击“应用风格”。' : '风格、间距和标签显示选择后立即生效。'),
+        el('label', null, '网页风格', el('select', { 'aria-label': '网页风格', value: selectedTheme, onChange: (e: { target: EventTarget | null }) => changeTheme(valueFrom(e).value) },
           el('option', { value: '' }, '请选择风格'), ...model.themes.map(t => el('option', { key: t.id, value: t.id, disabled: t.availability !== 'available' }, t.label + (t.availability !== 'available' ? '（当前框架不支持）' : ''))))),
         ...(descriptor?.options ?? []).map(d => {
           // Required means a JSON value must be present, including false, null or an empty string.
           const common = { 'aria-label': d.label, 'aria-required': d.required, name: d.key };
           const value = Object.hasOwn(options, d.key) ? options[d.key] : undefined;
           let control: UIElement;
-          if (d.kind === 'boolean') control = el('input', { ...common, type: 'checkbox', checked: value === true, onChange: (e: { target: EventTarget | null }) => changeOption(d.key, valueFrom(e).checked) });
-          else if (d.kind === 'enum') control = el('select', { ...common, value: Object.hasOwn(options, d.key) ? JSON.stringify(options[d.key]) : '', onChange: (e: { target: EventTarget | null }) => changeOption(d.key, valueFrom(e).value === '' ? undefined : JSON.parse(valueFrom(e).value)) },
+          if (d.kind === 'boolean') control = el('input', { ...common, type: 'checkbox', checked: value === true, onChange: (e: { target: EventTarget | null }) => changeOption(d.key, valueFrom(e).checked, true) });
+          else if (d.kind === 'enum') control = el('select', { ...common, value: Object.hasOwn(options, d.key) ? JSON.stringify(options[d.key]) : '', onChange: (e: { target: EventTarget | null }) => changeOption(d.key, valueFrom(e).value === '' ? undefined : JSON.parse(valueFrom(e).value), true) },
             el('option', { value: '' }, '请选择'), ...(d.choices ?? []).map((v, i) => el('option', { key: i, value: JSON.stringify(v) }, typeof v === 'string' ? v : JSON.stringify(v))));
           else control = el('input', { ...common, type: d.kind === 'number' ? 'number' : 'text', ...(d.kind === 'number' ? { step: 'any' } : {}), value: String(value ?? ''), onInput: (e: { target: EventTarget | null }) => changeOption(d.key, d.kind === 'number' ? valueFrom(e).value === '' ? undefined : Number(valueFrom(e).value) : valueFrom(e).value) });
           return el('label', { key: d.key }, d.label, control, ...model.themeValidation.filter(issue => issue.key === d.key).map(issue => error(issue.code)));
@@ -101,7 +108,7 @@ export function renderUi(model: ViewModel, context: RendererContext, state: UiSt
         ...model.themeValidation.filter(issue => !descriptor?.options.some(d => d.key === issue.key)).map(issue => error(issue.code)),
         el('button', { type: 'submit', disabled: !selectedTheme }, '应用风格')),
       catalog ? el('section', { className: 'selection' }, el('h3', null, '选择内容'),
-        !config ? el('p', null, '先应用风格，再选择内容。') : null,
+        !config ? el('p', null, '选择风格并完成必填参数后，再选择内容。') : null,
         catalog.status === 'loading' ? el('p', { role: 'status' }, catalog.retained ? '正在刷新目录；保留上次结果。' : '目录加载中') : null,
         catalog.status === 'error' ? el('div', null, error(catalog.error.code), catalog.retained ? el('p', null, '显示上次目录，可能不是最新内容。') : null) : null,
         diagnostics(catalog.snapshot.diagnostics),
@@ -133,7 +140,7 @@ export function renderUi(model: ViewModel, context: RendererContext, state: UiSt
     error(model.bootstrap.failure.kind === 'version' ? 'deployment-changed' : model.bootstrap.failure.error.code),
     model.bootstrap.failure.kind === 'request' && model.bootstrap.failure.error.retryable ? button('重试启动', () => context.dispatch({ type: 'retry-bootstrap' })) : null,
     button('重新加载页面', context.reloadCurrentDeployment)));
-  else if (model.kind === 'configure') main = el('main', { className: 'main' }, el('h2', null, '选择风格与内容'), el('p', null, '应用风格后，可以从目录选择内容并调整顺序。'));
+  else if (model.kind === 'configure') main = el('main', { className: 'main' }, el('h2', null, '选择风格与内容'), el('p', null, '选择风格后，可以从目录选择内容并调整顺序。'));
   else if (model.kind === 'detail') main = el('main', { className: 'main detail ' + config?.themeId + ' ' + config?.themeOptions.density }, button('返回首页', context.navigateHome), article(model.item, true));
   else main = el('main', { className: 'main' },
     model.page.status === 'empty' ? el('p', { className: 'empty' }, '尚未选择内容') : null,

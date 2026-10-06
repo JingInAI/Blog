@@ -101,7 +101,7 @@ for (const [index, setup] of [{ framework: 'vue', base: '/' }, { framework: 'rea
       await page.getByRole('button', { name: '返回首页', exact: true }).click();
       await expect(page.getByLabel('间距', { exact: true })).toHaveValue(JSON.stringify('compact'));
       const personal = await page.evaluate(() => localStorage.getItem('blog:blog:public-content:display:v1'));
-      expect(JSON.parse(personal!).themeOptions.density).toBe('comfortable');
+      expect(JSON.parse(personal!).themeOptions.density).toBe('compact');
       const search = '?share=' + encodeURIComponent(JSON.stringify({ sourceId: 'public-content', config: config() }));
       await page.evaluate(search => { history.pushState(null, '', search + '#/'); dispatchEvent(new PopStateEvent('popstate')); dispatchEvent(new HashChangeEvent('hashchange')); }, search);
       await expect(page.locator('.posts')).toHaveClass(/card-grid/);

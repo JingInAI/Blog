@@ -36,8 +36,6 @@ for (const [index, setup] of [
     expect(comfortable.width / comfortable.mainWidth).toBeGreaterThan(.95);
 
     await page.getByLabel('间距', { exact: true }).selectOption(JSON.stringify('compact'));
-    expect((await appearance(page)).padding).toBe(comfortable.padding);
-    await page.getByRole('button', { name: '应用风格', exact: true }).click();
     await expect.poll(async () => (await appearance(page)).padding).toBeLessThan(comfortable.padding);
     const compact = await appearance(page);
     expect(compact.lineHeight).toBeLessThan(comfortable.lineHeight);
@@ -45,13 +43,11 @@ for (const [index, setup] of [
     expect(compact.text).toBe(comfortable.text);
 
     await page.getByLabel('网页风格').selectOption('minimal-list');
-    await page.getByRole('button', { name: '应用风格', exact: true }).click();
     await expect.poll(async () => (await appearance(page)).border).toBe(0);
     const minimal = await appearance(page);
     expect(minimal.background).not.toBe(comfortable.background);
     expect(minimal.text).toBe(comfortable.text);
     await page.getByLabel('间距', { exact: true }).selectOption(JSON.stringify('compact'));
-    await page.getByRole('button', { name: '应用风格', exact: true }).click();
     await expect.poll(async () => (await appearance(page)).padding).toBeLessThan(minimal.padding);
     expect((await appearance(page)).text).toBe(comfortable.text);
 
@@ -78,5 +74,46 @@ for (const [index, setup] of [
     await expect(page.locator('.prose')).toContainText('作者原文 v1');
     expect((await appearance(page)).lineHeight).toBe(compact.lineHeight);
     expect(errors).toEqual([]);
+  });
+
+  test(`${setup.framework} ${setup.base}: home selects apply immediately, ordinary changes save and share edits stay temporary`, async ({ page, request }) => {
+    const origin = `http://127.0.0.1:${4301 + index}`, address = origin + setup.base;
+    await request.get(origin + '/__control?version=v1&failImages=false');
+    await page.goto(address);
+    await page.getByLabel('网页风格').selectOption('card-grid');
+    await expect(page.locator('.posts')).toHaveClass(/card-grid/);
+    await expect(page.locator('main article')).toHaveCount(0);
+    await page.getByLabel('选择：测试文章 A').check();
+    await expect(page.locator('.summary')).toHaveText('明确摘要 A');
+    await page.getByLabel('网页风格').selectOption('minimal-list');
+    await expect(page.locator('.prose')).toContainText('作者原文 v1');
+    const comfortable = await appearance(page);
+    await page.getByLabel('间距', { exact: true }).selectOption(JSON.stringify('compact'));
+    await expect.poll(async () => (await appearance(page)).lineHeight).toBeLessThan(comfortable.lineHeight);
+    await page.getByLabel('显示标签', { exact: true }).uncheck();
+    await expect(page.locator('.tags')).toHaveCount(0);
+    const stored = await page.evaluate(() => localStorage.getItem('blog:blog:public-content:display:v1'));
+    expect(JSON.parse(stored!).themeOptions).toEqual({ density: 'compact', showTags: false });
+    await page.reload();
+    await expect(page.locator('.posts')).toHaveClass(/minimal-list.*compact/);
+    await expect(page.locator('.tags')).toHaveCount(0);
+    await page.getByRole('button', { name: '生成分享链接', exact: true }).click();
+    const share = await page.getByLabel('分享链接', { exact: true }).inputValue();
+    await page.goto(share);
+    await page.getByLabel('间距', { exact: true }).selectOption(JSON.stringify('comfortable'));
+    await expect.poll(async () => (await appearance(page)).lineHeight).toBe(comfortable.lineHeight);
+    await page.getByLabel('网页风格').selectOption('card-grid');
+    await expect(page.locator('.prose')).toHaveCount(0);
+    await expect(page.locator('.posts')).toHaveClass(/card-grid/);
+    expect(page.url()).toBe(share);
+    expect(await page.evaluate(() => localStorage.getItem('blog:blog:public-content:display:v1'))).toBe(stored);
+    await page.reload();
+    await expect(page.locator('.posts')).toHaveClass(/minimal-list.*compact/);
+    await page.getByLabel('间距', { exact: true }).selectOption(JSON.stringify('comfortable'));
+    await page.getByRole('button', { name: '保存为个人配置', exact: true }).click();
+    expect(new URL(page.url()).search).toBe('');
+    await page.reload();
+    await expect(page.getByLabel('间距', { exact: true })).toHaveValue(JSON.stringify('comfortable'));
+    await expect(page.locator('.prose')).toContainText('作者原文 v1');
   });
 }
