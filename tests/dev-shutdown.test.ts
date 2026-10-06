@@ -17,8 +17,10 @@ for (const [framework, signal, port, repeated] of [['vue', 'SIGTERM', 5191, fals
     const config = path.join(root, 'config.json');
     await writeFile(config, JSON.stringify({ schemaVersion: 1, siteId: 'shutdown-fixture', source: { kind: 'static', sourceId: 'shutdown-content' }, basePath: '/' }));
     await writeFile(path.join(root, 'posts/article.md'), '---\n' + JSON.stringify({ schemaVersion: 1, id: 'shutdown-fixture', publication: 'published', title: 'Shutdown fixture' }) + '\n---\nAuthored fixture body');
+    const environment: NodeJS.ProcessEnv = { ...process.env, BLOG_CONFIG: config, BLOG_CONTENT_DIR: root, BLOG_BASE_PATH: '/', BLOG_DEV_PORT: String(port), FORCE_COLOR: '1' };
+    delete environment.NO_COLOR;
     const child = spawn(process.execPath, ['--import', 'tsx', 'scripts/site.ts', 'dev', framework], {
-      env: { ...process.env, BLOG_CONFIG: config, BLOG_CONTENT_DIR: root, BLOG_BASE_PATH: '/', BLOG_DEV_PORT: String(port) }, stdio: ['ignore', 'pipe', 'pipe']
+      env: environment, stdio: ['ignore', 'pipe', 'pipe']
     });
     let logs = '';
     child.stdout.on('data', data => { logs = (logs + data).slice(-3000); });
@@ -26,10 +28,17 @@ for (const [framework, signal, port, repeated] of [['vue', 'SIGTERM', 5191, fals
     const exited = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(resolve => child.once('exit', (code, signal) => resolve({ code, signal })));
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      for (let attempt = 0; attempt < 200 && !logs.includes('Local:'); attempt++) {
-        assert.equal(child.exitCode, null, logs); await delay(50);
+      let ready = false;
+      const deadline = Date.now() + 10000;
+      while (!ready && Date.now() < deadline) {
+        assert.equal(child.exitCode, null, logs);
+        try {
+          const response = await fetch(`http://127.0.0.1:${port}/`, { signal: AbortSignal.timeout(500) });
+          await response.arrayBuffer(); ready = response.status === 200;
+        } catch { /* Wait for the actual HTTP listener, independent of terminal formatting. */ }
+        if (!ready) await delay(50);
       }
-      assert.match(logs, /Local:/);
+      assert.equal(ready, true, 'Development listener did not become ready: ' + logs);
       assert.equal((await instances()).filter(name => !before.includes(name)).length, 1);
       assert.equal((await fetch(`http://127.0.0.1:${port}/`)).status, 200);
       child.kill(signal);

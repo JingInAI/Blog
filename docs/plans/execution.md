@@ -298,3 +298,9 @@ npm run check
 - 发布提交 a9f525a 已快进推送 main，对应真实运行 https://github.com/JingInAI/Blog/actions/runs/37426640787。仓库 API 已确认 has_pages/true。verify 的依赖与 Chromium 安装成功，npm run check 失败，build-pages/deploy 均跳过，没有发布不完整产物。
 - 公开检查仅给出退出码 1，检查摘要为空，详细日志 API 需要额外认证。自动审批拒绝公开未经审查的日志片段，该方案未执行；改为 scripts/ci-diagnostics.ts，只从日志选出固定阶段、数字计数、标准错误代码和已公开/已跟踪源码中的相对位置，不输出任意日志、断言值、URL、绝对运行路径或环境值。
 - 工作流仍保留完整原始控制台日志并在验证失败时返回 1，限定元数据作为检查注释输出，权限不变。新增两项测试验证敏感值排除、白名单、ANSI、位置去重及上限，类型与 actionlint 检查通过；完整本地 CI 标记复核同时进行中。
+
+- CI=true 的首次本地复核通过类型/边界、155 项逻辑/构建、双框架构建和 65 项浏览器，日志 `/tmp/blog-pages-ci-check.log`。候选再次检查通过，没有页面或网络错误。
+- 第二次远端运行 https://github.com/JingInAI/Blog/actions/runs/37427459178 在 test 阶段失败；限定元数据显示 155 项中 149 通过、6 失败，全部指向 tests/dev-shutdown.test.ts:32 的 Local 文本断言，Pages 构建/deploy 跳过。
+- 复现根因：本机 NO_COLOR 禁用 Vite/picocolors 颜色，远端开启颜色后 Local 与冒号之间插入 ANSI 控制字符，日志中不存在连续的 Local:。移除 NO_COLOR 并启用 CI/GITHUB_ACTIONS/FORCE_COLOR 后，原 Vue SIGTERM 测试在同一断言失败，日志 `/tmp/blog-ci-readiness-color-before.log`；服务器实际已监听，属于测试就绪判断错误。
+- 修复改为等待真实 HTTP 200 并读完响应，十秒截止仍保留；六项测试子进程显式启用颜色且移除 NO_COLOR，不再依赖人类可读日志格式。关闭退出码、监听关闭、生成目录清理及单次/重复信号断言均保留。六项全部通过，日志 `/tmp/blog-ci-readiness-after.log`；类型/actionlint/空白检查通过。浏览器开发夹具原已使用 HTTP 就绪，不存在同类文字依赖。
+- 正在相同 GitHub Actions 彩色环境下完整本地复核，并推送修复以重新验证真实发布。
