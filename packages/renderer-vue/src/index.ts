@@ -1,27 +1,24 @@
-import type { RendererAdapter, RendererContext, ViewModel } from '@blog/contracts';
-import { semanticEqual } from '@blog/contracts';
-import { createApp, defineComponent, shallowRef, watch } from 'vue';
+import type { RendererAdapter, ViewModel } from '@blog/contracts';
+import { createApp, defineComponent, shallowRef } from 'vue';
 import type { App } from 'vue';
-import { renderUi, initialUiState } from './ui.ts';
-function themeSelection(model: ViewModel) {
-  const config = model.kind === 'page' ? model.page.config : model.kind === 'detail' ? model.config : undefined;
-  return config ? { id: config.themeId, version: config.themeVersion, options: config.themeOptions } : undefined;
-}
+import { renderUi, createUiStore } from './ui.ts';
+import type { UiStore } from './ui.ts';
 export function createVueRenderer(): RendererAdapter {
-  let app: App | undefined, context: RendererContext;
-  const current = shallowRef<ViewModel>();
+  let app: App | undefined, store: UiStore | undefined, refresh: (() => void) | undefined;
   return { frameworkId: 'vue', supportedThemeIds: ['minimal-list', 'card-grid'],
-    mount(container, model, ctx) {
-      if (app) throw new Error('already-mounted'); context = ctx; current.value = model;
+    mount(container, model, context) {
+      if (app) throw new Error('already-mounted');
+      const mountedStore = createUiStore(model), revision = shallowRef(0);
+      store = mountedStore; refresh = () => { ++revision.value; };
       app = createApp(defineComponent({ setup() {
-        const state = shallowRef(initialUiState());
-        watch(() => themeSelection(current.value!), (next, previous) => {
-          if (!semanticEqual(previous, next)) state.value = { ...state.value, draftTheme: '', draftOptions: {} };
-        }, { flush: 'sync' });
-        return () => renderUi(current.value!, context, state.value, next => { state.value = typeof next === 'function' ? next(state.value) : next; });
+        return () => {
+          void revision.value;
+          return renderUi(mountedStore.model, context, mountedStore.state,
+            next => { mountedStore.setState(next); ++revision.value; }, () => mountedStore);
+        };
       } })); app.mount(container);
     },
-    update(model) { if (!app) throw new Error('not-mounted'); current.value = model; },
-    unmount() { app?.unmount(); app = undefined; current.value = undefined; }
+    update(model: ViewModel) { if (!app || !store) throw new Error('not-mounted'); store.update(model); refresh!(); },
+    unmount() { app?.unmount(); app = undefined; store = undefined; refresh = undefined; }
   };
 }

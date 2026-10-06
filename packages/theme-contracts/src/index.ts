@@ -6,7 +6,7 @@ export interface ThemeRegistration {
   validate(options: JsonObject): readonly ThemeValidationIssue[];
   migrations?: Readonly<Record<number, (config: DisplayConfig) => DisplayConfig>>;
 }
-const basicOptions: ThemeChoice['options'] = [
+const basicOptions: ThemeChoice['options'] = freeze([
   { key: 'colorScheme', label: '配色', group: '外观', kind: 'enum', required: false, choices: ['auto', 'light', 'dark', 'sepia'], choiceLabels: ['跟随系统', '浅色', '深色', '暖纸色'] },
   { key: 'fontSize', label: '字号', group: '文字', kind: 'enum', required: false, choices: ['normal', 'large', 'larger', 'largest'], choiceLabels: ['常规（100%）', '较大（125%）', '大号（150%）', '超大（200%）'] },
   { key: 'fontFamily', label: '字体', group: '文字', kind: 'enum', required: false, choices: ['sans', 'serif', 'mono'], choiceLabels: ['无衬线', '衬线', '等宽'] },
@@ -19,17 +19,17 @@ const basicOptions: ThemeChoice['options'] = [
   { key: 'textAlign', label: '正文对齐', group: '排版', kind: 'enum', required: false, choices: ['start', 'justify'], choiceLabels: ['起始侧对齐', '两端对齐'] },
   { key: 'showTags', label: '显示标签', group: '内容信息', kind: 'boolean', required: false, defaultValue: true },
   { key: 'hideMetadata', label: '隐藏作者和日期', group: '内容信息', kind: 'boolean', required: false }
-];
+]);
 function basicValidate(options: JsonObject): ThemeValidationIssue[] {
   const issues: ThemeValidationIssue[] = [];
   if (options.density !== 'comfortable' && options.density !== 'compact') issues.push({ key: 'density', code: 'invalid-value' });
   if (typeof options.showTags !== 'boolean') issues.push({ key: 'showTags', code: 'invalid-value' });
   return issues;
 }
-export const themeRegistry: readonly ThemeRegistration[] = [
+export const themeRegistry: readonly ThemeRegistration[] = freeze([
   { id: 'minimal-list', label: '简洁列表', version: 1, frameworkIds: ['vue', 'react'], options: basicOptions, defaults: { density: 'comfortable', showTags: true }, validate: basicValidate },
   { id: 'card-grid', label: '卡片网格', version: 1, frameworkIds: ['vue', 'react'], options: basicOptions, defaults: { density: 'comfortable', showTags: true }, validate: basicValidate }
-];
+]);
 // Only declared values become CSS classes. Optional reading preferences preserve
 // the version-1 defaults when absent, including old personal and share records.
 export function readingClasses(config: DisplayConfig | undefined): string {
@@ -39,11 +39,12 @@ export function readingClasses(config: DisplayConfig | undefined): string {
     .map(option => `reading-${option.key}-${config.themeOptions[option.key]}`).join(' ');
 }
 export function themeSelectionOptions(theme: ThemeChoice | undefined, config: DisplayConfig | undefined): JsonObject {
-  const next = { ...(theme?.defaults ?? {}) };
+  const next = structuredClone(theme?.defaults ?? {});
   if (config && theme && ['minimal-list', 'card-grid'].includes(config.themeId) && ['minimal-list', 'card-grid'].includes(theme.id)) {
     for (const option of basicOptions) {
-      if (theme.options.some(descriptor => descriptor.key === option.key && descriptor.kind === option.kind) && Object.hasOwn(config.themeOptions, option.key)) {
-        next[option.key] = config.themeOptions[option.key];
+      const descriptor = theme.options.find(candidate => candidate.key === option.key && candidate.kind === option.kind);
+      if (descriptor && Object.hasOwn(config.themeOptions, option.key) && matchesDescriptor(config.themeOptions[option.key], descriptor)) {
+        next[option.key] = structuredClone(config.themeOptions[option.key]);
       }
     }
   }
@@ -84,6 +85,7 @@ function themeDefaults(theme: ThemeRegistration): JsonObject {
     if (descriptor.kind === 'enum') {
       assertJson(descriptor.choices);
       if (!Array.isArray(descriptor.choices) || !descriptor.choices.length) throw new ValidationError('theme.options.choices');
+      if (descriptor.choices.some((value, index, values) => values.slice(0, index).some(previous => semanticEqual(previous, value)))) throw new ValidationError('theme.options.choices', 'duplicate-choice');
     }
     if (descriptor.choiceLabels !== undefined) {
       if (descriptor.kind !== 'enum' || !Array.isArray(descriptor.choiceLabels) || descriptor.choiceLabels.length !== descriptor.choices?.length) throw new ValidationError('theme.options.choiceLabels');
@@ -117,6 +119,12 @@ export function choices(frameworkId: string, registry = themeRegistry): ThemeCho
     availability: t.frameworkIds.includes(frameworkId) ? 'available' : 'unsupported-framework',
     ...(t.frameworkIds.includes(frameworkId) ? {} : { unavailableReason: 'unsupported-framework' as const }) }));
 }
+export function snapshotRegistry(registry = themeRegistry): readonly ThemeRegistration[] {
+  registeredDefaults(registry);
+  return freeze(registry.map(theme => ({ id: theme.id, label: theme.label, version: theme.version, validate: theme.validate,
+    frameworkIds: [...theme.frameworkIds], options: structuredClone(theme.options), defaults: structuredClone(theme.defaults),
+    ...(theme.migrations ? { migrations: { ...theme.migrations } } : {}) })));
+}
 export function normalizeConfig(value: unknown, frameworkId: string, registry = themeRegistry): DisplayConfig {
   const defaults = registeredDefaults(registry);
   assertJson(value);
@@ -126,8 +134,8 @@ export function normalizeConfig(value: unknown, frameworkId: string, registry = 
   const theme = registry.find(t => t.id === o.themeId && t.frameworkIds.includes(frameworkId));
   if (!theme) throw new ValidationError('config.themeId');
   if (o.themeVersion !== theme.version) {
-    const migrate = theme.migrations?.[Number(o.themeVersion)];
-    if (!migrate) throw new ValidationError('config.themeVersion');
+    const migrate = theme.migrations && Object.hasOwn(theme.migrations, String(o.themeVersion)) ? theme.migrations[Number(o.themeVersion)] : undefined;
+    if (typeof migrate !== 'function') throw new ValidationError('config.themeVersion');
     // A migration must directly reach the current version; cycles never recurse.
     const migrated = migrate(structuredClone(o) as unknown as DisplayConfig); assertJson(migrated);
     const repeated = migrate(structuredClone(o) as unknown as DisplayConfig); assertJson(repeated);

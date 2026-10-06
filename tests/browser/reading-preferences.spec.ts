@@ -33,6 +33,51 @@ for (const [index, setup] of [
   { framework: 'vue', base: '/' }, { framework: 'react', base: '/' },
   { framework: 'vue', base: '/Blog/' }, { framework: 'react', base: '/Blog/' }
 ].entries()) {
+  test(`${setup.framework} ${setup.base}: same-task changes preserve every reading option`, async ({ page, request }) => {
+    const origin = `http://127.0.0.1:${4301 + index}`;
+    await request.get(origin + '/__control?version=v1&failImages=false');
+    await page.goto(origin + setup.base);
+    await page.getByLabel('网页风格').selectOption('minimal-list');
+    await expect(page.locator('.posts')).toHaveClass(/minimal-list/);
+    await page.evaluate(() => {
+      for (const [label, value] of [['字号', 'largest'], ['配色', 'dark'], ['网页风格', 'card-grid']]) {
+        const control = document.querySelector<HTMLSelectElement>(`select[aria-label="${label}"]`)!;
+        control.value = label === '网页风格' ? value : JSON.stringify(value); control.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
+    await expect.poll(async () => JSON.parse((await page.evaluate(key => localStorage.getItem(key), key))!).themeOptions).toMatchObject({ fontSize: 'largest', colorScheme: 'dark' });
+    await expect(page.locator('.posts')).toHaveClass(/card-grid/);
+    await page.reload();
+    await expect(page.getByLabel('字号', { exact: true })).toHaveValue('"largest"');
+    await expect(page.getByLabel('配色', { exact: true })).toHaveValue('"dark"');
+  });
+  test(`${setup.framework} ${setup.base}: same-task content additions and removals preserve selected order`, async ({ page, request }) => {
+    const origin = `http://127.0.0.1:${4301 + index}`;
+    await request.get(origin + '/__control?version=v1&failImages=false');
+    await page.goto(origin + setup.base);
+    await page.getByLabel('网页风格').selectOption('minimal-list');
+    await expect(page.locator('.posts')).toHaveClass(/minimal-list/);
+    await page.evaluate(() => {
+      for (const label of ['选择：测试文章 A', '选择：测试文章 B']) {
+        const control = document.querySelector<HTMLInputElement>(`input[aria-label="${label}"]`)!;
+        control.click();
+      }
+    });
+    await expect(page.locator('main article')).toHaveCount(2);
+    expect(JSON.parse((await page.evaluate(key => localStorage.getItem(key), key))!).contentIds).toEqual(['a%+😀', 'b']);
+    await page.reload(); await expect(page.locator('main article')).toHaveCount(2);
+    await page.evaluate(() => {
+      const control = document.querySelector<HTMLInputElement>('input[aria-label="选择：测试文章 A"]')!;
+      control.click(); control.click();
+    });
+    await expect(page.locator('main article')).toHaveCount(2);
+    expect(JSON.parse((await page.evaluate(key => localStorage.getItem(key), key))!).contentIds).toEqual(['b', 'a%+😀']);
+    await page.evaluate(() => {
+      for (const label of ['移除：a%+😀', '移除：b']) document.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!.click();
+    });
+    await expect(page.locator('main article')).toHaveCount(0);
+    expect(JSON.parse((await page.evaluate(key => localStorage.getItem(key), key))!).contentIds).toEqual([]);
+  });
   test(`${setup.framework} ${setup.base}: every reading dimension changes appearance immediately, survives saving and respects share isolation`, async ({ page, request }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     const origin = `http://127.0.0.1:${4301 + index}`;

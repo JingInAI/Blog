@@ -8,7 +8,7 @@ import type { ThemeRegistration } from '@blog/theme-contracts';
 const registry: ThemeRegistration[] = [
   { id: 'minimal-list', label: '有默认值的测试主题', version: 1, frameworkIds: ['vue', 'react'], defaults: { enabled: false, choice: null },
     options: [{ key: 'enabled', label: '必填布尔值', kind: 'boolean', required: true },
-      { key: 'choice', label: 'JSON 枚举', kind: 'enum', required: true, choices: ['named', null, 0, false, { size: 2 }, ['x']] },
+      { key: 'choice', label: 'JSON 枚举', kind: 'enum', required: true, choices: ['named', null, 0, false, { size: 2 }, ['x'], { size: 2, tone: 'author' }] },
       { key: 'amount', label: '可选数字', kind: 'number', required: false },
       { key: 'caption', label: '必填字符串', kind: 'string', required: true, defaultValue: '' },
       { key: 'constructor', label: '作者扩展字符串', kind: 'string', required: false },

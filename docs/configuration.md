@@ -31,6 +31,8 @@ GitHub Pages 工作流已记录本项目明确选择的 Vue；未设置仓库变
 
 只有作者明确填写时才采用默认。初始配置不自动保存成个人记录。空 `contentIds` 表示明确空选择，未知 ID 保留错误位置，不替换为其他文章。
 
+程序化控制器在创建时复制作者默认、主题注册、来源身份及标量选项，后续修改调用者对象不改变该实例的恢复结果或存储键。作者默认先验证 JSON，非法访问器不执行，非法默认仍报告 invalid-author-default；不冻结调用者数据。更改作者默认/注册应创建新控制器，更改来源通过 changeSource，并在调用时捕获新身份。回调及端口内部行为仍由宿主负责，详见 [扩展约束](extensions.md)。
+
 两内置主题的 themeOptions 还接受配色、字体、字号、阅读宽度、文字间距、对齐及隐藏元信息，完整字段见 [阅读设置](specs/reading-preferences.md)。新字段可选，旧配置不需要迁移；选择“使用默认”删除新枚举字段，显示恢复其默认外观。新增选项即时更新，普通会话自动保存，分享会话保持显式保存规则；分享携带已选视觉参数，不改变内容数据。
 
 ## 接入独立后端
@@ -49,6 +51,8 @@ GitHub Pages 工作流已记录本项目明确选择的 Vue；未设置仓库变
 ```
 
 请求默认为 `GET site`、`GET contents?limit=20&cursor=...`、`GET contents/:编码ID`，以 baseUrl 为基址。筛选使用重复 `ids` 参数，与分页参数互斥。末页省略 nextCursor。端点映射通过 `HttpSourceOptions.endpoints` 注入，可适配既有服务。
+
+端点解析后的最终地址必须是绝对 HTTP(S) URL，且不含 URL 账号密码。公共 requestJson 在传输前校验，data/file/ftp 等地址或 URL 凭据返回 invalid-response，不发起请求；绝对端点替换基址也遵守此约束。请求授权继续通过 requestPolicy 注入。
 
 API baseUrl 是绝对 HTTP/HTTPS 目录地址，不接受 query/fragment，包括单独的 `?` 或 `#`；缺少末尾 `/` 时按 URL 的路径补齐，不对原始字符串拼接。具体端点的参数通过 endpoints 提供，授权通过 requestPolicy 提供，不能依赖基础地址中会被相对 URL 解析丢弃的参数。分页 limit 仅缺省/undefined 时使用 20，显式 null 不是有效数字。
 

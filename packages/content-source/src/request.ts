@@ -8,6 +8,7 @@ export function requestTimeout(value: unknown): number {
 export async function requestJson(url: string, options: { signal?: AbortSignal; timeoutMs?: number; fetch?: FetchPort; policy?: RequestInit } = {}): Promise<unknown> {
   const timeoutMs = requestTimeout(options.timeoutMs);
   if (options.signal?.aborted) throw abortError();
+  try { publicUrl(url, 'request.url'); } catch { throw new ContentSourceError('invalid-response'); }
   const abort = new AbortController(); let timedOut = false; let response: Response | undefined;
   const cancel = (): void => abort.abort(); options.signal?.addEventListener('abort', cancel, { once: true });
   const timer = setTimeout(() => { timedOut = true; abort.abort(); }, timeoutMs);

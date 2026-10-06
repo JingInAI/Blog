@@ -1,5 +1,16 @@
 import { expect, test } from '@playwright/test';
 for (const [framework, port] of [['vue', 4310], ['react', 4311]] as const) {
+  test(`${framework}: reordered JSON enum objects restore their semantic choice without rewriting values`, async ({ page }) => {
+    const key = 'blog:theme-form-fixture:theme-fixture:display:v1';
+    const record = { version: 1, contentIds: [], themeId: 'minimal-list', themeVersion: 1, themeOptions: { enabled: false, choice: { tone: 'author', size: 2 }, caption: '' } };
+    await page.addInitScript(({ key, record }) => localStorage.setItem(key, JSON.stringify(record)), { key, record });
+    await page.goto(`http://127.0.0.1:${port}/`);
+    await expect(page.locator('#committed')).toContainText('"tone":"author"');
+    await expect(page.getByLabel('JSON 枚举')).toHaveValue('{"size":2,"tone":"author"}');
+    await page.getByRole('button', { name: '应用风格', exact: true }).click();
+    expect(JSON.parse((await page.evaluate(key => localStorage.getItem(key), key))!)).toEqual(record);
+    await expect(page.getByRole('alert')).toHaveCount(0);
+  });
   test(`${framework}: immediate selects retain the valid theme and stored record until required options are complete`, async ({ page }) => {
     const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
     await page.goto(`http://127.0.0.1:${port}/`);

@@ -5,12 +5,30 @@ type UIElement = ReactElement;
 const FRAMEWORK = 'react';
 const el = (tag: string, props: Record<string, unknown> | null, ...children: UIChild[]): UIElement => createElement(tag, props, ...children);
 const image = (props: { key: string; id: string; node: Extract<import('@blog/contracts').SafeNode, { type: 'image' }>; resource: import('@blog/contracts').RenderedResource; context: import('@blog/contracts').RendererContext }): UIElement => createElement(ImageSlot, props);
-import type { ContentRecord, ContentSummary, ItemState, JsonObject, JsonValue, RendererContext, SafeNode, ThemeChoice, ViewModel } from '@blog/contracts';
+import { semanticEqual } from '@blog/contracts';
+import type { ContentRecord, ContentSummary, DisplayConfig, ItemState, JsonObject, JsonValue, RendererContext, SafeNode, ThemeChoice, ViewModel } from '@blog/contracts';
 import { ImageSlot } from './image.ts';
 import { readingClasses, themeSelectionOptions } from '@blog/theme-contracts';
-export interface UiState { draftTheme: string; draftOptions: JsonObject; copyMessage: string; copyUrl: string; }
+export interface UiState { draftTheme: string; draftOptions: JsonObject; draftContentIds?: string[]; copyMessage: string; copyUrl: string; }
 export type UiUpdate = UiState | ((state: UiState) => UiState);
 export const initialUiState = (): UiState => ({ draftTheme: '', draftOptions: {}, copyMessage: '', copyUrl: '' });
+const displayConfig = (model: ViewModel): DisplayConfig | undefined => model.kind === 'page' ? model.page.config : model.kind === 'detail' ? model.config : undefined;
+const themeSelection = (config: DisplayConfig | undefined) => config ? { id: config.themeId, version: config.themeVersion, options: config.themeOptions } : undefined;
+export function createUiStore(model: ViewModel) {
+  const store = {
+    model, state: initialUiState(),
+    setState(next: UiUpdate): void { store.state = typeof next === 'function' ? next(store.state) : next; },
+    update(next: ViewModel): void {
+      const previousConfig = displayConfig(store.model), nextConfig = displayConfig(next);
+      let state = store.state;
+      if (!semanticEqual(themeSelection(previousConfig), themeSelection(nextConfig))) state = { ...state, draftTheme: '', draftOptions: {} };
+      if (!semanticEqual(previousConfig?.contentIds, nextConfig?.contentIds)) { state = { ...state }; delete state.draftContentIds; }
+      store.state = state; store.model = next;
+    }
+  };
+  return store;
+}
+export type UiStore = ReturnType<typeof createUiStore>;
 const messages: Record<string, string> = {
   'not-found': '内容不存在或未公开', unauthorized: '需要授权', forbidden: '无权访问', unavailable: '服务暂时不可用',
   network: '网络请求失败', timeout: '请求超时', 'invalid-response': '内容响应不符合约定', 'deployment-changed': '站点已更新，请更新页面',
@@ -24,8 +42,9 @@ const messages: Record<string, string> = {
 };
 const message = (code: string): string => messages[code] ?? code;
 const valueFrom = (event: { target: EventTarget | null }): HTMLInputElement => event.target as HTMLInputElement;
-export function renderUi(model: ViewModel, context: RendererContext, state: UiState, setState: (state: UiUpdate) => void): UIElement {
-  const config = model.kind === 'page' ? model.page.config : model.kind === 'detail' ? model.config : undefined;
+export function renderUi(model: ViewModel, context: RendererContext, state: UiState, setState: (state: UiUpdate) => void,
+  readLatest: () => { model: ViewModel; state: UiState } = () => ({ model, state })): UIElement {
+  const config = displayConfig(model);
   const catalog = model.kind === 'page' ? model.page.catalog : model.kind === 'configure' ? model.catalog : undefined;
   const notices = model.kind === 'page' ? model.page.notices : model.kind === 'configure' || model.kind === 'detail' ? model.notices : [];
   const button = (label: string, action: () => void, props: Record<string, unknown> = {}): UIElement => el('button', { type: 'button', onClick: action, ...props }, label);
@@ -75,24 +94,43 @@ export function renderUi(model: ViewModel, context: RendererContext, state: UiSt
     const selectedTheme = state.draftTheme || config?.themeId || '';
     const descriptor: ThemeChoice | undefined = model.themes.find(t => t.id === selectedTheme);
     const options = state.draftTheme ? state.draftOptions : config?.themeOptions ?? {};
+    const readSelection = () => {
+      const latest = readLatest(), currentConfig = displayConfig(latest.model);
+      const id = latest.state.draftTheme || currentConfig?.themeId || '';
+      return { ...latest, config: currentConfig, id, descriptor: latest.model.themes.find(theme => theme.id === id),
+        options: latest.state.draftTheme ? latest.state.draftOptions : currentConfig?.themeOptions ?? {},
+        ids: latest.state.draftContentIds ?? currentConfig?.contentIds ?? [] };
+    };
     function changeOption(key: string, value: JsonValue | undefined, immediate = false): void {
-      const next = { ...options };
-      if (value === undefined && immediate && descriptor && Object.hasOwn(descriptor.defaults, key)) value = descriptor.defaults[key];
+      const current = readSelection(), next = { ...current.options };
+      if (value === undefined && immediate && current.descriptor && Object.hasOwn(current.descriptor.defaults, key)) value = current.descriptor.defaults[key];
       if (value === undefined) delete next[key];
       else Object.defineProperty(next, key, { value, writable: true, enumerable: true, configurable: true });
-      setState({ ...state, draftTheme: selectedTheme, draftOptions: next });
-      if (immediate && selectedTheme) context.dispatch({ type: 'set-theme', themeId: selectedTheme, options: next });
+      setState({ ...current.state, draftTheme: current.id, draftOptions: next });
+      if (immediate && current.id) context.dispatch({ type: 'set-theme', themeId: current.id, options: next });
     }
     function changeTheme(id: string): void {
-      const next = themeSelectionOptions(model.themes.find(t => t.id === id), config);
-      setState({ ...state, draftTheme: id, draftOptions: next });
+      const current = readSelection();
+      const previous = current.config ? { ...current.config, themeId: current.id, themeOptions: current.options } : undefined;
+      const next = themeSelectionOptions(current.model.themes.find(t => t.id === id), previous);
+      setState({ ...current.state, draftTheme: id, draftOptions: next });
       if (id) context.dispatch({ type: 'set-theme', themeId: id, options: next });
     }
-    const ids = config?.contentIds ?? [];
+    function setContent(ids: string[]): void {
+      const current = readSelection(); if (!current.config) return;
+      setState({ ...current.state, draftContentIds: [...ids] });
+      context.dispatch({ type: 'set-content', ids });
+    }
+    function moveContent(id: string, direction: number): void {
+      const ids = [...readSelection().ids], index = ids.indexOf(id), target = index + direction;
+      if (index < 0 || target < 0 || target >= ids.length) return;
+      [ids[index], ids[target]] = [ids[target], ids[index]]; setContent(ids);
+    }
+    const ids = state.draftContentIds ?? config?.contentIds ?? [];
     const groups = [...new Set((descriptor?.options ?? []).map(option => option.group ?? '风格参数'))];
     editor = el('aside', { className: 'editor', 'aria-label': '展示设置' },
       el('h2', null, '展示设置'),
-      el('form', { onSubmit: (event: { preventDefault(): void }) => { event.preventDefault(); context.dispatch({ type: 'set-theme', themeId: selectedTheme, options }); } },
+      el('form', { onSubmit: (event: { preventDefault(): void }) => { event.preventDefault(); const current = readSelection(); context.dispatch({ type: 'set-theme', themeId: current.id, options: current.options }); } },
         el('p', { className: 'muted' }, descriptor?.options.some(d => d.kind === 'string' || d.kind === 'number') ? '风格和选择项即时生效；文字或数字参数填写后点击“应用风格”。' : '展示选项选择后立即生效；“使用默认”恢复默认外观。'),
         el('label', null, '网页风格', el('select', { 'aria-label': '网页风格', value: selectedTheme, onChange: (e: { target: EventTarget | null }) => changeTheme(valueFrom(e).value) },
           el('option', { value: '' }, '请选择风格'), ...model.themes.map(t => el('option', { key: t.id, value: t.id, disabled: t.availability !== 'available' }, t.label + (t.availability !== 'available' ? '（当前框架不支持）' : ''))))),
@@ -102,7 +140,7 @@ export function renderUi(model: ViewModel, context: RendererContext, state: UiSt
           const value = Object.hasOwn(options, d.key) ? options[d.key] : undefined;
           let control: UIElement;
           if (d.kind === 'boolean') control = el('input', { ...common, type: 'checkbox', checked: value === true, onChange: (e: { target: EventTarget | null }) => changeOption(d.key, valueFrom(e).checked, true) });
-          else if (d.kind === 'enum') control = el('select', { ...common, value: Object.hasOwn(options, d.key) ? JSON.stringify(options[d.key]) : '', onChange: (e: { target: EventTarget | null }) => changeOption(d.key, valueFrom(e).value === '' ? undefined : JSON.parse(valueFrom(e).value), true) },
+          else if (d.kind === 'enum') control = el('select', { ...common, value: Object.hasOwn(options, d.key) ? JSON.stringify(d.choices?.find(choice => semanticEqual(choice, value)) ?? value) : '', onChange: (e: { target: EventTarget | null }) => changeOption(d.key, valueFrom(e).value === '' ? undefined : JSON.parse(valueFrom(e).value), true) },
             el('option', { value: '' }, d.required ? '请选择' : '使用默认'), ...(d.choices ?? []).map((v, i) => el('option', { key: i, value: JSON.stringify(v) }, d.choiceLabels?.[i] ?? (typeof v === 'string' ? v : JSON.stringify(v)))));
           else control = el('input', { ...common, type: d.kind === 'number' ? 'number' : 'text', ...(d.kind === 'number' ? { step: 'any' } : {}), value: String(value ?? ''), onInput: (e: { target: EventTarget | null }) => changeOption(d.key, d.kind === 'number' ? valueFrom(e).value === '' ? undefined : Number(valueFrom(e).value) : valueFrom(e).value) });
           return el('label', { key: d.key }, d.label, control, ...model.themeValidation.filter(issue => issue.key === d.key).map(issue => error(issue.code)));
@@ -110,9 +148,9 @@ export function renderUi(model: ViewModel, context: RendererContext, state: UiSt
         ...model.themeValidation.filter(issue => !descriptor?.options.some(d => d.key === issue.key)).map(issue => error(issue.code)),
         el('button', { type: 'submit', disabled: !selectedTheme }, '应用风格'),
         button('恢复默认外观', () => {
-          const next = { ...(descriptor?.defaults ?? {}) };
-          setState({ ...state, draftTheme: selectedTheme, draftOptions: next });
-          context.dispatch({ type: 'set-theme', themeId: selectedTheme, options: next });
+          const current = readSelection(), next = structuredClone(current.descriptor?.defaults ?? {});
+          setState({ ...current.state, draftTheme: current.id, draftOptions: next });
+          context.dispatch({ type: 'set-theme', themeId: current.id, options: next });
         }, { disabled: !selectedTheme })),
       catalog ? el('section', { className: 'selection' }, el('h3', null, '选择内容'),
         !config ? el('p', null, '选择风格并完成必填参数后，再选择内容。') : null,
@@ -120,11 +158,11 @@ export function renderUi(model: ViewModel, context: RendererContext, state: UiSt
         catalog.status === 'error' ? el('div', null, error(catalog.error.code), catalog.retained ? el('p', null, '显示上次目录，可能不是最新内容。') : null) : null,
         diagnostics(catalog.snapshot.diagnostics),
         catalog.status === 'ready' && !catalog.snapshot.items.length ? el('p', null, '没有已发布的内容') : null,
-        ...catalog.snapshot.items.map(c => el('label', { className: 'content-choice', key: c.id }, el('input', { type: 'checkbox', checked: ids.includes(c.id), disabled: !config, 'aria-label': '选择：' + c.title, onChange: (e: { target: EventTarget | null }) => context.dispatch({ type: 'set-content', ids: valueFrom(e).checked ? [...ids, c.id] : ids.filter(id => id !== c.id) }) }), c.title)),
+        ...catalog.snapshot.items.map(c => el('label', { className: 'content-choice', key: c.id }, el('input', { type: 'checkbox', checked: ids.includes(c.id), disabled: !config, 'aria-label': '选择：' + c.title, onChange: (e: { target: EventTarget | null }) => { const ids = readSelection().ids; setContent(valueFrom(e).checked ? ids.includes(c.id) ? [...ids] : [...ids, c.id] : ids.filter(id => id !== c.id)); } }), c.title)),
         ids.length ? el('ol', { className: 'order' }, ...ids.map((id, i) => el('li', { key: id }, catalog.snapshot.items.find(c => c.id === id)?.title ?? id,
-          button('上移', () => { const next = [...ids]; [next[i - 1], next[i]] = [next[i], next[i - 1]]; context.dispatch({ type: 'set-content', ids: next }); }, { disabled: i === 0, 'aria-label': '上移：' + id }),
-          button('下移', () => { const next = [...ids]; [next[i], next[i + 1]] = [next[i + 1], next[i]]; context.dispatch({ type: 'set-content', ids: next }); }, { disabled: i === ids.length - 1, 'aria-label': '下移：' + id }),
-          button('移除', () => context.dispatch({ type: 'set-content', ids: ids.filter(v => v !== id) }), { 'aria-label': '移除：' + id })))) : null,
+          button('上移', () => moveContent(id, -1), { disabled: i === 0, 'aria-label': '上移：' + id }),
+          button('下移', () => moveContent(id, 1), { disabled: i === ids.length - 1, 'aria-label': '下移：' + id }),
+          button('移除', () => setContent(readSelection().ids.filter(v => v !== id)), { 'aria-label': '移除：' + id })))) : null,
         button('刷新目录', () => context.dispatch({ type: 'retry-catalog' }), { disabled: catalog.status === 'loading' }),
         catalog.status === 'ready' && catalog.paging.status === 'idle' && catalog.paging.nextCursor ? button('加载更多', () => context.dispatch({ type: 'load-more-catalog' })) : null,
         catalog.status === 'ready' && catalog.paging.status === 'loading' ? el('p', null, '下一页加载中') : null,

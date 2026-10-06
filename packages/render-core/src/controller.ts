@@ -1,6 +1,6 @@
-import { BootstrapError, BodyProcessError, ContentSourceError, StorageError, contentError, freeze, isAbort, parseJson, semanticEqual, validId } from '@blog/contracts';
+import { assertJson, BootstrapError, BodyProcessError, ContentSourceError, StorageError, contentError, freeze, isAbort, parseJson, semanticEqual, validId } from '@blog/contracts';
 import type { BootstrapState, CatalogState, ConfigStatus, ContentResult, DeploymentState, DisplayConfig, DisplayEvent, ItemState, LocationInput, PersonalReadState, PersonalStoragePort, RendererContext, RouteTarget, SessionUrlPort, SiteState, SourceRuntime, SourceRuntimeFactory, ThemeValidationIssue, ViewModel, DeploymentProbeEvent } from '@blog/contracts';
-import { choices, normalizeConfig, ThemeConfigError, themeRegistry } from '@blog/theme-contracts';
+import { choices, normalizeConfig, snapshotRegistry, ThemeConfigError, themeRegistry } from '@blog/theme-contracts';
 import { processBody } from './body.ts';
 import { createShareUrl, parseShare, sameShare, ShareProtocolError } from './sharing.ts';
 type Operations = ViewModel['operations'];
@@ -12,6 +12,15 @@ interface ControllerOptions {
 }
 const idleOperations = (): Operations => ({ share: { status: 'idle' }, save: { status: 'idle' }, reset: { status: 'idle' }, recovery: { status: 'idle' } });
 const emptySnapshot = (): CatalogState['snapshot'] => ({ items: [], diagnostics: [] });
+function snapshotFactory(factory: SourceRuntimeFactory): SourceRuntimeFactory {
+  validId(factory.identity.sourceId);
+  return Object.freeze({ identity: freeze(structuredClone(factory.identity)), initialize: factory.initialize.bind(factory) });
+}
+function snapshotAuthor(value: unknown): unknown {
+  if (value === undefined) return undefined;
+  // Keep invalid defaults invalid without invoking getters or freezing caller data.
+  try { assertJson(value); return freeze(structuredClone(value)); } catch { return null; }
+}
 export class BlogController {
   private options: ControllerOptions;
   private runtime?: SourceRuntime;
@@ -50,9 +59,10 @@ export class BlogController {
   private started = false;
   constructor(options: ControllerOptions) {
     validId(options.siteId); validId(options.factory.identity.sourceId);
-    this.options = options; this.location = structuredClone(options.initialLocation);
+    this.options = Object.freeze({ ...options, factory: snapshotFactory(options.factory), registry: snapshotRegistry(options.registry), authorDefault: snapshotAuthor(options.authorDefault) });
+    this.location = structuredClone(options.initialLocation);
     this.parsedShare = this.parseLocation();
-    this.deployment = options.factory.identity.kind === 'static' ? { status: 'checking', buildId: options.factory.identity.expectedBuildId } : { status: 'not-applicable' };
+    this.deployment = this.options.factory.identity.kind === 'static' ? { status: 'checking', buildId: this.options.factory.identity.expectedBuildId } : { status: 'not-applicable' };
   }
   private get registry(): typeof themeRegistry { return this.options.registry ?? themeRegistry; }
   private get key(): string { return `blog:${encodeURIComponent(this.options.siteId)}:${encodeURIComponent(this.options.factory.identity.sourceId)}:display:v1`; }
@@ -146,11 +156,12 @@ export class BlogController {
   }
   changeSource(factory: SourceRuntimeFactory): void {
     if (this.destroyed) return;
+    factory = snapshotFactory(factory);
     if (this.publishing) { queueMicrotask(() => this.changeSource(factory)); return; }
     validId(factory.identity.sourceId);
     // Keep the current runtime intact unless the host can commit URL cleanup.
     if (this.parsedShare.state.status !== 'absent') this.cleanUrl();
-    this.release(); this.options = { ...this.options, factory }; this.runtime = undefined;
+    this.release(); this.options = Object.freeze({ ...this.options, factory }); this.runtime = undefined;
     this.site = { status: 'loading' }; this.catalog = { status: 'loading', snapshot: emptySnapshot(), retained: false };
     this.failedUrls.clear(); this.blockedUrls.clear(); this.generation = 0; this.config = this.baseline = undefined;
     this.parsedShare = this.parseLocation(); this.personalRead = { status: 'not-read' }; this.operations = idleOperations(); this.themeValidation = []; this.notices = []; this.cursorHistory.clear();
