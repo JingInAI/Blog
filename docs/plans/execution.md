@@ -361,4 +361,6 @@ npm run check
 - 全文和配图未修改，规格见 [即时响应](../specs/theme-immediate-response.md)。
 - CI 标记下完整检查通过类型、模块边界、155 项逻辑/构建、双框架构建及 75 项浏览器，包含新增两项不完整参数保护；日志 /tmp/blog-theme-live-full.log。
 - 双框架 /Blog/ 真实 RSI 验收直接选择而不点击应用按钮，全部正文、27 标题/30 链接/22 alt/22 图解码、分享/保存/刷新与 1280/390 像素布局均通过，无脚本或非预期网络错误。卡片宽松/紧凑内边距 28.8/16px、行高 27.2/24px、段落间距 16/9.6px，简洁风格透明背景、顶部边框为 0；证据 .generated/theme-live/local-longform.json。
-- 内容 buildId 保持 9925b008ea691efcbd916dc9530429ff557394c391e5c48b811cf05af835b8db；本次只更新前端交互与相关文档、测试。真实发布结果取得后追加。
+- 内容 buildId 保持 9925b008ea691efcbd916dc9530429ff557394c391e5c48b811cf05af835b8db；本次只更新前端交互与相关文档、测试。
+- 发布提交 27e4b6fb3f8263c2414ac7105e6278b885599c58 的 [Actions 运行 37440775862](https://github.com/JingInAI/Blog/actions/runs/37440775862) 中 verify/build-pages/deploy 全部成功。09:11 UTC 真实 Vue 页面无手动应用长文验收通过，实际间距与背景测量和本地一致；全文/标题/链接/22 图、分享/保存/刷新及桌面/手机布局正确，无页面或非预期网络错误。证据为 .generated/theme-live/online-longform.json。
+- 30 个线上文件均 HTTP 200、SHA-256 与 Vue 候选完全一致，源码/配置/文档的核对路径均为 404；报告 online-artifacts.json 和运行状态 actions-status.json 保存于同一忽略目录。旧页面刷新一次加载新前端后，选择内置风格、间距和标签立即生效；文档收尾普通推送不重复部署。

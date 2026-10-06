@@ -1,6 +1,6 @@
 # 风格和间距选项即时响应
 
-日期：2026-10-06。用户要求修改网页风格或间距后立即响应，替代上一轮的选择后手动应用交互。实现、完整本地检查及双框架真实长文验收已通过，真实发布验收进行中。
+日期：2026-10-06。用户要求修改网页风格或间距后立即响应，替代上一轮的选择后手动应用交互。实现、完整本地检查、双框架真实长文验收、Pages 发布及真实线上验收均已通过。
 
 ## 交互规则
 
@@ -19,5 +19,9 @@ Vue、React 中选择主题、枚举参数或布尔参数时立即派发 set-the
 修复前上述八项全部失败，日志 /tmp/blog-theme-live-before.log；实现后八项及八项既有扩展表单场景通过，日志 /tmp/blog-theme-live-after.log。新增两项[必填参数保护场景](../../tests/browser/theme-form.spec.ts)，核对自动提交不完整主题或清除必填选择时保留旧配置与存储，完成后立即生效。
 
 CI 标记下的 npm run check 已通过类型、模块边界、155 项逻辑/构建、双框架生产构建及 75 项浏览器测试，日志 /tmp/blog-theme-live-full.log。双框架 /Blog/ 真实 RSI 长文验收不点击应用按钮：全部正文文本、27 个标题、30 个链接、22 张图片的 alt 和解码与作者内容一致；即时切换、分享/保存/刷新及 1280/390 像素布局通过，无页面或非预期网络错误。证据为 .generated/theme-live/local-longform.json。
+
+发布提交 27e4b6fb3f8263c2414ac7105e6278b885599c58 的 [Actions 运行 37440775862](https://github.com/JingInAI/Blog/actions/runs/37440775862) 中 verify/build-pages/deploy 全部成功。09:11 UTC 在 [实际 Vue 站点](https://jinginai.github.io/Blog/) 完成无手动应用的长文验收，直接切换立即改变计算样式：卡片宽松/紧凑顶部内边距 28.8/16px，正文行高 27.2/24px，段落外边距 16/9.6px；简洁风格背景透明、顶部边框为 0。全文、27 个标题、30 个链接、22 个 alt/图片解码、分享/保存/刷新及桌面/手机布局全部通过，无页面或非预期网络错误。
+
+30 个线上公开文件均 HTTP 200、SHA-256 与已验收 Vue 候选完全一致，源码/配置/审查文档的核对路径均为 404。实际长文和产物报告分别为 .generated/theme-live/online-longform.json 和 online-artifacts.json，运行状态为 actions-status.json。内容 buildId 保持不变；已打开的旧页面需要刷新一次加载新前端脚本，此后修改内置选项直接生效。
 
 上一轮 [外观样式修复](theme-appearance-fix.md) 的样式规则继续适用；本轮改变控件事件的生效时机，正文和配图不修改。实际长文、截图、部署及资源报告保存在忽略目录 .generated/theme-live/，旧报告保留。
