@@ -1,0 +1,13 @@
+{
+  "name": "@blog/renderer-react",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@blog/contracts": "*",
+    "@blog/theme-contracts": "*",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  }
+}

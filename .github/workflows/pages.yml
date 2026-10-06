@@ -1,0 +1,118 @@
+name: Verify and publish blog
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish to GitHub Pages after verification (keep off for local testing)'
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: blog-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.ref != format('refs/heads/{0}', github.event.repository.default_branch) }}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium
+      - run: npm run check
+
+  build-pages:
+    needs: verify
+    # Publishing requires a separate, explicit manual selection; pushes only verify.
+    if: github.event_name == 'workflow_dispatch' && inputs.publish == true && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
+    env:
+      # Vue was explicitly selected for this repository; an explicit variable can override it.
+      BLOG_FRAMEWORK: ${{ vars.BLOG_FRAMEWORK || 'vue' }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+        with:
+          # Optional, repository-scoped setup credential; normal runs only read existing settings.
+          token: ${{ secrets.PAGES_SETUP_TOKEN || github.token }}
+          enablement: ${{ secrets.PAGES_SETUP_TOKEN != '' }}
+      - name: Explain Pages setup failure
+        if: failure() && steps.pages.outcome == 'failure'
+        run: |
+          cat <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          ## Pages setup could not be read or created
+
+          Application verification passed; this failure occurred while reading or enabling the GitHub Pages site.
+          Check Settings → Pages: the repository must support Pages and Source must be GitHub Actions.
+          A private repository needs a GitHub plan that supports Pages for private repositories.
+          If the site is not yet provisioned, enable it in Settings or set the optional PAGES_SETUP_TOKEN Actions secret.
+          That setup credential must be restricted to this repository and have Pages: write and Administration: write.
+          GITHUB_TOKEN cannot perform this first-time enablement, even with pages: write.
+          Remove the setup secret after successful provisioning; subsequent runs use GITHUB_TOKEN with pages: read.
+          See docs/usage.md for setup and troubleshooting. This failed job has not uploaded or deployed a site.
+          EOF
+          echo "::error::GitHub Pages setup is unavailable. Check the Pages settings, supported repository plan, and optional setup credential; see the job summary."
+          exit 1
+      - name: Build selected framework at the Pages path
+        run: npm run build
+        env:
+          BLOG_BASE_PATH: ${{ steps.pages.outputs.base_path }}/
+      - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+        with:
+          path: dist/${{ env.BLOG_FRAMEWORK }}
+
+  diagnose-pages:
+    needs: [verify, build-pages]
+    if: always() && github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && needs.verify.result == 'success' && needs.build-pages.result == 'failure'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Read limited authenticated Pages diagnostics
+        run: node --import tsx scripts/pages-diagnostics.ts
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  deploy:
+    needs: build-pages
+    if: github.event_name == 'workflow_dispatch' && inputs.publish == true && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

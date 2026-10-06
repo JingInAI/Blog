@@ -1,0 +1,10 @@
+{
+  "hosting": "github-pages",
+  "frameworks": ["vue", "react"],
+  "frameworkSelection": "build-time",
+  "contentSources": ["static", "http-api"],
+  "separateContentAndRendering": true,
+  "selection": {"contentIds": [], "themeId": null},
+  "missingContentPolicy": "omit-or-show-explicit-error",
+  "inferContent": false
+}

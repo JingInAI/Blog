@@ -1,0 +1,96 @@
+import { expect, test } from '@playwright/test';
+for (const [framework, port] of [['vue', 4310], ['react', 4311]] as const) {
+  test(`${framework}: typed theme defaults, fractional numbers and clearing optional values survive submission and refresh`, async ({ page }) => {
+    await page.goto(`http://127.0.0.1:${port}/`);
+    await page.getByLabel('网页风格').selectOption('minimal-list');
+    await expect(page.getByLabel('JSON 枚举')).toHaveValue('null');
+    await expect(page.getByLabel('必填布尔值')).not.toBeChecked();
+    await page.getByRole('button', { name: '应用风格' }).click();
+    const committed = page.locator('#committed');
+    await expect(committed).toHaveText(JSON.stringify({ version: 1, contentIds: [], themeId: 'minimal-list', themeVersion: 1, themeOptions: { enabled: false, choice: null, caption: '' } }));
+    await page.getByLabel('可选数字').fill('1.25');
+    await page.getByLabel('JSON 枚举').selectOption(JSON.stringify({ size: 2 }));
+    await page.getByRole('button', { name: '应用风格' }).click();
+    await expect(committed).toContainText('"amount":1.25');
+    await expect(committed).toContainText('"choice":{"size":2}');
+    await page.reload();
+    await expect(page.getByLabel('可选数字')).toHaveValue('1.25');
+    await expect(page.getByLabel('JSON 枚举')).toHaveValue('{"size":2}');
+    await page.getByLabel('可选数字').fill('');
+    await page.getByRole('button', { name: '应用风格' }).click();
+    await expect(committed).not.toContainText('"amount"');
+    await page.reload();
+    await expect(page.getByLabel('可选数字')).toHaveValue('');
+    await expect(page.getByRole('alert')).toHaveCount(0);
+  });
+  test(`${framework}: unset required options stay unset, explicit false/null commit, optional enum can be cleared`, async ({ page }) => {
+    await page.goto(`http://127.0.0.1:${port}/`);
+    await page.getByLabel('网页风格').selectOption('card-grid');
+    await expect(page.getByLabel('JSON 枚举')).toHaveValue('');
+    await page.getByRole('button', { name: '应用风格' }).click();
+    await expect(page.getByRole('alert', { name: '' })).toHaveCount(2);
+    await expect(page.locator('#committed')).toHaveText('null');
+    await page.getByLabel('必填布尔值').check();
+    await page.getByLabel('必填布尔值').uncheck();
+    await page.getByLabel('JSON 枚举').selectOption('null');
+    await page.getByLabel('可选枚举').selectOption('"first"');
+    await page.getByRole('button', { name: '应用风格' }).click();
+    await expect(page.locator('#committed')).toContainText('"enabled":false');
+    await expect(page.locator('#committed')).toContainText('"choice":null');
+    await expect(page.locator('#committed')).toContainText('"optional":"first"');
+    await page.getByLabel('可选枚举').selectOption('');
+    await page.getByRole('button', { name: '应用风格' }).click();
+    await expect(page.locator('#committed')).not.toContainText('"optional"');
+    await page.reload();
+    await expect(page.getByLabel('JSON 枚举')).toHaveValue('null');
+    await expect(page.getByLabel('必填布尔值')).not.toBeChecked();
+    await expect(page.getByLabel('可选枚举')).toHaveValue('');
+    await expect(page.getByRole('alert')).toHaveCount(0);
+  });
+  test(`${framework}: inherited property names remain unset until explicitly authored and survive refresh`, async ({ page }) => {
+    const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
+    await page.goto(`http://127.0.0.1:${port}/`);
+    await page.getByLabel('网页风格').selectOption('minimal-list');
+    await expect(page.getByLabel('作者扩展字符串')).toHaveValue('');
+    await expect(page.getByLabel('作者扩展数字')).toHaveValue('');
+    await expect(page.getByLabel('作者扩展枚举')).toHaveValue('');
+    await page.getByRole('button', { name: '应用风格' }).click();
+    await expect(page.locator('#committed')).not.toContainText('constructor');
+    await expect(page.locator('#committed')).not.toContainText('toString');
+    await page.getByLabel('作者扩展字符串').fill('作者明确填写的样式文字');
+    await page.getByLabel('作者扩展数字').fill('2.75');
+    await page.getByRole('button', { name: '应用风格' }).click();
+    await expect(page.locator('#committed')).toContainText('"constructor":"作者明确填写的样式文字"');
+    await expect(page.locator('#committed')).toContainText('"toString":2.75');
+    await page.reload();
+    await expect(page.getByLabel('作者扩展字符串')).toHaveValue('作者明确填写的样式文字');
+    await expect(page.getByLabel('作者扩展数字')).toHaveValue('2.75');
+    await page.getByLabel('作者扩展数字').fill('');
+    await page.getByRole('button', { name: '应用风格' }).click();
+    await expect(page.locator('#committed')).not.toContainText('toString');
+    await page.reload(); await expect(page.getByLabel('作者扩展数字')).toHaveValue('');
+    await expect(page.getByRole('alert')).toHaveCount(0); expect(errors).toEqual([]);
+  });
+  test(`${framework}: prototype-named JSON enum stores object, string and null as own values and can be removed`, async ({ page }) => {
+    const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
+    await page.goto(`http://127.0.0.1:${port}/`);
+    await page.getByLabel('网页风格').selectOption('minimal-list');
+    for (const value of [{ tone: 'author' }, 'explicit', null]) {
+      await page.getByLabel('作者扩展枚举').selectOption(JSON.stringify(value));
+      await page.getByRole('button', { name: '应用风格' }).click();
+      await expect(page.locator('#committed')).toContainText('"__proto__":' + JSON.stringify(value), { timeout: 3000 });
+      const saved = await page.evaluate(() => {
+        const raw = localStorage.getItem('blog:theme-form-fixture:theme-fixture:display:v1');
+        const options = JSON.parse(raw!).themeOptions;
+        return { own: Object.hasOwn(options, '__proto__'), value: options.__proto__, ordinaryPrototype: Object.getPrototypeOf(options) === Object.prototype, globalTone: Object.hasOwn(Object.prototype, 'tone') };
+      });
+      expect(saved).toEqual({ own: true, value, ordinaryPrototype: true, globalTone: false });
+      await page.reload(); await expect(page.getByLabel('作者扩展枚举')).toHaveValue(JSON.stringify(value));
+    }
+    await page.getByLabel('作者扩展枚举').selectOption('');
+    await page.getByRole('button', { name: '应用风格' }).click();
+    await expect(page.locator('#committed')).not.toContainText('__proto__');
+    await page.reload(); await expect(page.getByLabel('作者扩展枚举')).toHaveValue('');
+    await expect(page.getByRole('alert')).toHaveCount(0); expect(errors).toEqual([]);
+  });
+}
