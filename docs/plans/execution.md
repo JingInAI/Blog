@@ -1,6 +1,6 @@
 # 工程初始化执行记录
 
-执行起始日期：2026-10-05；最新本地审查完成日期：2026-10-06。实施基线：review-07；当前修订：implementation-17。工程阶段 P0–P6 已完成；当前按用户要求继续本地测试，P7 发布、失败排查及 T14 暂缓。此前推送与 Configure Pages 读取元数据失败记录保留；真实 API 未接入。用户此前明确选择的 Vue 发布目标保留，当前不执行发布。
+执行起始日期：2026-10-05；最新本地审查完成日期：2026-10-06。实施基线：review-07；当前修订：implementation-17。工程阶段 P0–P6 与 implementation-17 完整本地验收已完成。用户于 2026-10-06 明确恢复 P7 发布、失败排查及 T14；当前正在准备真实 Vue 发布。此前 Configure Pages 失败记录保留；真实 API 未接入。
 
 ## 已实施内容
 
@@ -15,7 +15,7 @@
 | P6 | 根/子路径、详情/历史、严格分享协议、版本变化显式重载、锁文件 CI/Pages 工作流、使用与扩展文档 | sharing.test.ts：T12，浏览器真实静态 V1→V2：T13d，产物审计与文档命令检查 |
 | P7 | 实际 Pages 地址/部署日志、线上跨发布场景、可选真实 API | 用户要求暂缓；此前推送与首次 Configure Pages 404 保留，不计入本轮本地验收 |
 
-源码与测试均在当前工作区；原工作区的 Git 元数据只读，未暂存、提交或改变其分支。发布准备使用 `/tmp/blog-release-20261005` 独立检出，真实推送/部署结果另行记录。此前的 `.blog-init-probe` 和 `blog-architecture.json` 保留，不加入工程发布提交；构建器不会上传它们。
+源码与测试均在当前工作区。早期 Git 写入受限时使用 `/tmp/blog-release-20261005` 独立检出；2026-10-06 根据用户“git提交所有修改”的明确授权，已在当前工作区 main 提交全部 95 个未忽略文件（6cbb3d8）。`.blog-init-probe` 和 `blog-architecture.json` 随此本地提交保留，但构建器不会上传它们。
 
 ## 工具和明确选择
 
@@ -281,3 +281,16 @@ npm run check
 [边界验收 JSON](../../.generated/local-smoke/boundary-lifecycle-results.json) 与 [公开产物审计](../../.generated/local-smoke/artifact-audit.json) 由 `.generated/local-smoke/boundary-lifecycle-audit.mjs` 核对，绑定本轮日志及 [implementation-16 基线](../../.generated/local-smoke/artifact-audit-implementation-16.json)。25 个固定端口均关闭，临时实例目录为空；两框架各七个文件，公开文章为空、站点仅 schemaVersion，没有夹具/草稿/新增作者事实。内容文件、buildId 及 CSS 哈希与前轮相同，JavaScript 与 index.html 引用随修复改变。十三份 Markdown 与本地链接同时复核，前轮日志及产物审计保留。
 
 本轮仅本地审查与修复，没有推送、查询 GitHub、发布或真实后端接入，环境验收继续暂缓。
+
+
+## 恢复线上发布（2026-10-06）
+
+- 用户明确要求公开仓库后继续线上发布；此次授权取代此前的线下范围，Vue 发布目标不变。
+- 公开仓库 API 返回 private/false、default_branch/main、has_pages/false；站点尚未启用，已请求用户在 Settings → Pages 选择并保存 GitHub Actions 来源。当前环境没有 GitHub API 管理认证，仅有可用 SSH 推送权限，不索取或记录凭据。
+- 远端 main 为 1e403f4，其历史为此前的初始化 32e6d27 和 Pages 修订 d663e92/1e403f4；当前本地初始化 6cbb3d8 含完整 implementation-17。合并已有远端历史并保留本地文件，后续快进推送，不改写已发布历史。
+- 新增默认分支显式发布提交入口 `[publish-pages] `，手动 publish 输入仍默认关闭。普通 push/PR 不发布；发布需完整 verify 成功，再配置 Pages、构建 Vue、上传 dist/vue 并串行部署。无需创建 API 服务或添加作者内容。
+- 工作流静态检查、候选构建、推送、实际作业和线上验收结果将在取得证据后追加；目前不宣告部署成功。
+
+- 用户随后确认已重新启用 GitHub Actions 来源。Python 网络路径的匿名 API 达到共享速率上限，改用本机 Node 的公开请求读取实际状态；不会因此索取认证。
+- actionlint 1.7.11 与 git diff --check 通过。以 BLOG_FRAMEWORK/vue、BLOG_BASE_PATH=/Blog/、BLOG_OUTPUT_DIR/dist/pages-vue 构建成功；七个公开文件，buildId 为 c89041b3bc4516b5264c267edc16e605b2ec09e428e28ee979b640f516999f54，站点仅 schemaVersion、文章目录和正文映射均为空，无夹具或工程文档。
+- 真实 Chromium 候选验收通过：首页与资源 200、Vue 渲染、两主题、个人配置刷新、分享配置刷新、显式保存清理地址、重置、坏分享恢复及 390 像素移动布局；无页面异常、失败请求或 HTTP 错误。直接执行工作流中的实际发布表达式，九种事件/分支/提交/手动输入组合全部符合预期。候选报告和桌面/手机截图位于忽略目录 `.generated/pages-release/`，不进入发布产物。

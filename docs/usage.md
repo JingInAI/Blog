@@ -2,7 +2,7 @@
 
 项目将作者内容、共享控制器和 Vue/React 渲染适配器分开。生产内容初始为空；没有默认风格或默认文章。先应用风格，再选择内容。测试站点、文章及图片仅由测试脚本生成，不属于生产内容。
 
-当前按用户要求先做本地测试，P7/T14 线上发布与排查暂缓。以下本地命令不需要 GitHub 认证或 Pages 设置；首次发布章节供以后明确恢复发布时使用。
+用户已于 2026-10-06 明确恢复 P7/T14 线上发布。以下本地命令不需要 GitHub 认证或 Pages 设置；实际线上状态和验收证据见 [执行记录](plans/execution.md)。
 
 ## 本地开发
 
@@ -69,7 +69,7 @@ implementation-17 验收见 [字节与生命周期审查](specs/boundary-lifecyc
 
 本项目已明确选择 Vue 作为线上发布框架，选择记录在 `.github/workflows/pages.yml` 的 build-pages.env 中，React 仍参与构建与验收。首先在 GitHub 仓库 Settings → Pages 中启用站点并选择 GitHub Actions 作为来源，确认设置已保存；无需再设置框架变量。以后如需改变发布目标，在 Settings → Secrets and variables → Actions → Variables 设置 `BLOG_FRAMEWORK=vue` 或 `react`，显式覆盖已记录的选择。其他非空变量值会令构建失败，不能静默回退。
 
-工作区中的 `.github/workflows/pages.yml`（**Verify and publish blog**）已改为 push/PR 和未勾选 publish 的手动运行仅执行验证，不调用 Pages 设置、诊断或部署；本轮没有推送，该改动尚未改变远端工作流。以后明确恢复发布并同步此版本时，在 Actions 中选择默认分支手动运行并勾选 **publish**（默认 false）；此时先验证两框架，再构建选定应用。从 configure-pages 的 `base_path` 取得根/仓库子路径，只上传相应 `dist/` 目录，最后交给 `github-pages` 环境发布。默认只读取已启用的 Pages；显式提供下述 setup secret 时才尝试创建站点，不创建 API 服务。动作使用官方仓库已核对的提交 SHA。
+`.github/workflows/pages.yml`（**Verify and publish blog**）对普通 push/PR 和未勾选 publish 的手动运行仅执行验证，不调用 Pages 设置、诊断或部署。在 Actions 中选择默认分支手动运行并勾选 **publish**（默认 false）即可明确发布。只有 SSH 推送权限时，也可创建提交标题以 `[publish-pages] ` 开头的发布提交并推送到默认分支；匹配的是 push 事件的最后一条提交消息，其他分支、标签、PR 或正文中单独提及该标记都不会发布。两种显式入口均先验证两框架，再构建选定应用。从 configure-pages 的 `base_path` 取得根/仓库子路径，只上传相应 `dist/` 目录，最后交给 `github-pages` 环境发布。默认只读取已启用的 Pages；显式提供下述 setup secret 时才尝试创建站点，不创建 API 服务。动作使用官方仓库已核对的提交 SHA。
 
 build-pages 仅有 contents/read、pages/read，用于读取 Pages 元数据；deploy 才授予 pages/write 和 id-token/write。默认分支运行不因后续提交被取消，PR/其他分支仍可取消旧验证；部署作业继续串行。这样工作流级取消不会覆盖部署作业的保护。设置与并发规则参考 [Pages 元数据权限](https://docs.github.com/en/rest/pages/pages#get-a-github-pages-site)、[Actions 并发](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)。
 

@@ -32,8 +32,8 @@ jobs:
 
   build-pages:
     needs: verify
-    # Publishing requires a separate, explicit manual selection; pushes only verify.
-    if: github.event_name == 'workflow_dispatch' && inputs.publish == true && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    # Publish only with an explicit request on the default branch. Ordinary pushes only verify.
+    if: (github.event_name == 'workflow_dispatch' && inputs.publish == true || github.event_name == 'push' && startsWith(github.event.head_commit.message, '[publish-pages] ')) && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -101,7 +101,7 @@ jobs:
 
   deploy:
     needs: build-pages
-    if: github.event_name == 'workflow_dispatch' && inputs.publish == true && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    if: (github.event_name == 'workflow_dispatch' && inputs.publish == true || github.event_name == 'push' && startsWith(github.event.head_commit.message, '[publish-pages] ')) && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: ubuntu-latest
     permissions:
       pages: write
