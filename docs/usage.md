@@ -71,6 +71,8 @@ implementation-17 验收见 [字节与生命周期审查](specs/boundary-lifecyc
 
 `.github/workflows/pages.yml`（**Verify and publish blog**）对普通 push/PR 和未勾选 publish 的手动运行仅执行验证，不调用 Pages 设置、诊断或部署。在 Actions 中选择默认分支手动运行并勾选 **publish**（默认 false）即可明确发布。只有 SSH 推送权限时，也可创建提交标题以 `[publish-pages] ` 开头的发布提交并推送到默认分支；匹配的是 push 事件的最后一条提交消息，其他分支、标签、PR 或正文中单独提及该标记都不会发布。两种显式入口均先验证两框架，再构建选定应用。从 configure-pages 的 `base_path` 取得根/仓库子路径，只上传相应 `dist/` 目录，最后交给 `github-pages` 环境发布。默认只读取已启用的 Pages；显式提供下述 setup secret 时才尝试创建站点，不创建 API 服务。动作使用官方仓库已核对的提交 SHA。
 
+verify 若失败，控制台保留原始日志且作业仍失败；公开检查注释只输出当前验证阶段、数字计数、标准错误代码和已跟踪公开源码的相对位置，帮助在只有 SSH 权限时定位 CI 故障。该元数据不包含任意日志内容、断言值、URL、绝对运行路径或环境值，也不能替代完整验证通过。
+
 build-pages 仅有 contents/read、pages/read，用于读取 Pages 元数据；deploy 才授予 pages/write 和 id-token/write。默认分支运行不因后续提交被取消，PR/其他分支仍可取消旧验证；部署作业继续串行。这样工作流级取消不会覆盖部署作业的保护。设置与并发规则参考 [Pages 元数据权限](https://docs.github.com/en/rest/pages/pages#get-a-github-pages-site)、[Actions 并发](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)。
 
 如果 **build-pages → Configure Pages** 报 `Get Pages site failed` / `Not Found`，失败点是 Pages 元数据读取，应用尚未开始本次发布构建。404 本身不能确定是站点未创建、凭据不可见还是平台设置问题。查看 Settings → Pages 是否已经启用站点及 GitHub Actions 来源；免费方案支持公开仓库的 Pages，私有仓库需要支持该能力的 Pro/Team/Enterprise 方案。仓库可见性与账号方案由所有者决定，工作流不会更改。参见 [Pages 可用范围](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages)。

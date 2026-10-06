@@ -294,3 +294,7 @@ npm run check
 - 用户随后确认已重新启用 GitHub Actions 来源。Python 网络路径的匿名 API 达到共享速率上限，改用本机 Node 的公开请求读取实际状态；不会因此索取认证。
 - actionlint 1.7.11 与 git diff --check 通过。以 BLOG_FRAMEWORK/vue、BLOG_BASE_PATH=/Blog/、BLOG_OUTPUT_DIR/dist/pages-vue 构建成功；七个公开文件，buildId 为 c89041b3bc4516b5264c267edc16e605b2ec09e428e28ee979b640f516999f54，站点仅 schemaVersion、文章目录和正文映射均为空，无夹具或工程文档。
 - 真实 Chromium 候选验收通过：首页与资源 200、Vue 渲染、两主题、个人配置刷新、分享配置刷新、显式保存清理地址、重置、坏分享恢复及 390 像素移动布局；无页面异常、失败请求或 HTTP 错误。直接执行工作流中的实际发布表达式，九种事件/分支/提交/手动输入组合全部符合预期。候选报告和桌面/手机截图位于忽略目录 `.generated/pages-release/`，不进入发布产物。
+
+- 发布提交 a9f525a 已快进推送 main，对应真实运行 https://github.com/JingInAI/Blog/actions/runs/37426640787。仓库 API 已确认 has_pages/true。verify 的依赖与 Chromium 安装成功，npm run check 失败，build-pages/deploy 均跳过，没有发布不完整产物。
+- 公开检查仅给出退出码 1，检查摘要为空，详细日志 API 需要额外认证。自动审批拒绝公开未经审查的日志片段，该方案未执行；改为 scripts/ci-diagnostics.ts，只从日志选出固定阶段、数字计数、标准错误代码和已公开/已跟踪源码中的相对位置，不输出任意日志、断言值、URL、绝对运行路径或环境值。
+- 工作流仍保留完整原始控制台日志并在验证失败时返回 1，限定元数据作为检查注释输出，权限不变。新增两项测试验证敏感值排除、白名单、ANSI、位置去重及上限，类型与 actionlint 检查通过；完整本地 CI 标记复核同时进行中。

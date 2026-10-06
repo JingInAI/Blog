@@ -28,7 +28,13 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npx playwright install --with-deps chromium
-      - run: npm run check
+      - name: Run full verification
+        run: |
+          set -o pipefail
+          npm run check 2>&1 | tee "$RUNNER_TEMP/blog-check.log" || {
+            node --import tsx scripts/ci-diagnostics.ts "$RUNNER_TEMP/blog-check.log"
+            exit 1
+          }
 
   build-pages:
     needs: verify
