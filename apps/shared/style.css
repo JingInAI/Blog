@@ -28,6 +28,8 @@ label { display: block; margin: .8rem 0; font-size: .9rem; }
 .order li { padding: .3rem 0; }
 .order button { font-size: .7rem; padding: .1rem .3rem; margin-left: .25rem; }
 .card-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; }
+.detail.card-grid { display: block; }
+.card-grid.compact { gap: 1rem; }
 .post { min-width: 0; margin-bottom: 2rem; padding: 1.8rem; background: #fff; border: 1px solid #dce2d6; border-radius: 8px; overflow-wrap: anywhere; }
 .minimal-list .post { border: 0; border-bottom: 1px solid #d4dbcf; border-radius: 0; background: transparent; padding: 1rem 0 2rem; }
 .post h2 { margin: 0 0 .5rem; line-height: 1.4; font-size: 1.5rem; }
@@ -35,8 +37,12 @@ label { display: block; margin: .8rem 0; font-size: .9rem; }
 .tags { display: flex; flex-wrap: wrap; gap: .3rem; }
 .tags span { background: #eff3e9; padding: 0 .4rem; border-radius: 3px; }
 .compact .post { padding: 1rem; margin-bottom: 1rem; }
+.minimal-list.compact .post { padding: .75rem 0 1rem; }
+.compact .metadata { gap: .4rem; }
 .empty { padding: 3rem 0; color: #667567; }
 .prose { margin-top: 1.5rem; }
+.compact .prose { margin-top: .8rem; line-height: 1.5; }
+.compact .prose :is(p, ul, ol, blockquote, pre, table) { margin-block: .6rem; }
 .prose img { max-width: 100%; height: auto; border-radius: 4px; }
 .prose pre, .post details pre { overflow: auto; white-space: pre-wrap; background: #eef1e9; padding: 1rem; }
 .prose code { font-family: ui-monospace, monospace; }

@@ -84,6 +84,7 @@ export function renderUi(model: ViewModel, context: RendererContext, state: UiSt
     editor = el('aside', { className: 'editor', 'aria-label': '展示设置' },
       el('h2', null, '展示设置'),
       el('form', { onSubmit: (event: { preventDefault(): void }) => { event.preventDefault(); context.dispatch({ type: 'set-theme', themeId: selectedTheme, options }); } },
+        el('p', { className: 'muted' }, '调整风格或间距后，点击“应用风格”更新页面。'),
         el('label', null, '网页风格', el('select', { 'aria-label': '网页风格', value: selectedTheme, onChange: (e: { target: EventTarget | null }) => { const id = valueFrom(e).value; setState({ ...state, draftTheme: id, draftOptions: { ...(model.themes.find(t => t.id === id)?.defaults ?? {}) } }); } },
           el('option', { value: '' }, '请选择风格'), ...model.themes.map(t => el('option', { key: t.id, value: t.id, disabled: t.availability !== 'available' }, t.label + (t.availability !== 'available' ? '（当前框架不支持）' : ''))))),
         ...(descriptor?.options ?? []).map(d => {
@@ -133,7 +134,7 @@ export function renderUi(model: ViewModel, context: RendererContext, state: UiSt
     model.bootstrap.failure.kind === 'request' && model.bootstrap.failure.error.retryable ? button('重试启动', () => context.dispatch({ type: 'retry-bootstrap' })) : null,
     button('重新加载页面', context.reloadCurrentDeployment)));
   else if (model.kind === 'configure') main = el('main', { className: 'main' }, el('h2', null, '选择风格与内容'), el('p', null, '应用风格后，可以从目录选择内容并调整顺序。'));
-  else if (model.kind === 'detail') main = el('main', { className: 'main' }, button('返回首页', context.navigateHome), article(model.item, true));
+  else if (model.kind === 'detail') main = el('main', { className: 'main detail ' + config?.themeId + ' ' + config?.themeOptions.density }, button('返回首页', context.navigateHome), article(model.item, true));
   else main = el('main', { className: 'main' },
     model.page.status === 'empty' ? el('p', { className: 'empty' }, '尚未选择内容') : null,
     el('div', { className: 'posts ' + config?.themeId + ' ' + config?.themeOptions.density }, ...model.page.items.map(item => article(item, config?.themeId === 'minimal-list'))));
