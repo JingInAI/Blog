@@ -317,3 +317,13 @@ npm run check
 - 独立线上产物核对通过：七个公开文件 HTTP/200、每个 SHA-256 与 Vue `/Blog/` 候选完全一致；README.md、package.json、blog.config.json 的站点请求均为 404。记录 `.generated/pages-release/online-artifacts.json`；真实运行的作业/步骤记录为 `actions-status.json`。
 - 内容真实性：生产目录仍为空，正文映射为空，站点信息仅 schemaVersion；没有加入测试文章、虚构作者或站点资料。当前空内容站点首次发布已完成；真实文章/图片与已打开旧页跨内容发布的故障/重载环境验证保持待办，已有本地跨版本证据不冒充线上验收。真实 API 未启用，不计生产 CORS/授权验收。
 - 后续普通 push/PR 仅验证；更新站点时在默认分支手动 publish/true，或推送标题以 `[publish-pages] ` 开头的显式发布提交。此次收尾只更新文档，普通推送不会重复部署。
+
+
+## 用户指定 RSI 文章的发布测试（2026-10-06）
+
+- 用户指定 https://prism-shadow.github.io/awesome-rsi/#blog/understanding-rsi，并明确确认全文及配图使用权。源快照为 36e91f8fed67e2cd0c761126f91042513df5d6ae，使用来源原生中文 Markdown；其正文与实际网页部署脚本中的 Markdown 逐字一致。
+- 导入 content/posts/understanding-rsi.md，id/understanding-rsi、publication/published。标题、摘要、标签来自原站元数据；没有原页 author，不填写 author。原页日期仅为 2026-09-03，在来源附记保留，不补具体时间或时区。只改图片引用路径并追加来源链接，原文其余字符完整保留。
+- 22 张图共 7464415 字节，全部校验 PNG、源长度与 Git blob SHA-1、SHA-256。两张较大文件的网页/API请求超时后，通过固定版本只读 Git 对象补齐，未改变内容或压缩图片。
+- 双框架 `/Blog/` 生产候选均构建成功，共用 buildId 6090834eca8ee395a7394ae8f849959c67624deec9689c1278ac22c0a78ae40c。两框架各一项长文验收均通过：正文全部文本、27 标题、30 链接、22 alt/图片解码、两主题、摘要不加载图片、详情刷新、分享/保存、个人刷新、1280/390 像素无溢出；无脚本或网络错误。
+- `.generated/source-import/local-longform.json`、import-provenance.json、asset-provenance.json 与截图为本机忽略证据。详细规则见 [RSI 导入记录](../specs/understanding-rsi-import.md)。原文公式按原始 LaTeX 文本显示，不声称复刻源站 KaTeX 排版。
+- 已准备真实旧版本会话，在本次新内容上线后验证目录失效提示、显式更新及分享/风格/空选择保留；发布和线上结果取得后追加。
