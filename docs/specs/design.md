@@ -1,6 +1,6 @@
 # 博客项目设计规格
 
-修订标识：implementation-17，基于 review-07，与计划同步实施。后续展示与配置边界审查见 [presentation-reliability-audit.md](presentation-reliability-audit.md)，已通过 167 项逻辑/构建与 89 项浏览器验收。前轮记录见 [字节与输出](boundary-lifecycle-audit.md)、[输入准确性](input-fidelity-audit.md)、[版本与生命周期](version-lifecycle-audit.md)、[内容完整性](integrity-audit.md) 和 [可靠性审查](reliability-audit.md)。
+修订标识：implementation-17，基于 review-07，与计划同步实施。后续展示与配置边界审查见 [presentation-reliability-audit.md](presentation-reliability-audit.md)，该轮通过 167 项逻辑/构建与 89 项浏览器；后续 [维度扩展](expanded-reading-controls.md) 完整验收通过 169 项逻辑/构建与 97 项浏览器。前轮记录见 [字节与输出](boundary-lifecycle-audit.md)、[输入准确性](input-fidelity-audit.md)、[版本与生命周期](version-lifecycle-audit.md)、[内容完整性](integrity-audit.md) 和 [可靠性审查](reliability-audit.md)。
 
 状态：P0–P6 已实施，implementation-17 完整本地验收已通过；2026-10-06 已完成授权 RSI 全文及 22 张配图的 Vue Pages 发布和线上验收。跨发布旧正文 404、版本提示、显式更新后的正文/图片恢复核心断言已通过；恢复链接的配置另行复核通过。跨发布脚本最后的首页控件定位错误保留，不计整段成功；真实 API 与线上异常注入未执行。此前 Pages 失败记录保留，当前证据见 [执行记录](../plans/execution.md)。
 
@@ -250,7 +250,7 @@ contentIds 不能重复，顺序就是展示顺序，空数组为明确空选择
 
 主题、枚举和布尔选择项变化立即提交 set-theme；内置主题默认参数完整，首次选择即可建立空内容选择的合法配置。文本/数字输入可保留未完成草稿，通过手动提交完成；草稿本身不是 DisplayConfig。缺少必填值或验证失败时保留原配置、不加载新正文或写记录，显示共享 ThemeValidationIssue；完成后的合法自动事件立即生效。两内置主题切换时保留共同阅读偏好，扩展主题按新描述初始化，不能混入旧主题专属参数。两个框架遵循相同事件与校验契约，见 [即时响应规格](theme-immediate-response.md) 和后续 [多维度阅读设置](reading-preferences.md)。
 
-展示设置根据官方阅读产品及 W3C 资料扩展配色、字号、字体、宽度、正文行距、段间距、字/词间距、对齐以及已有作者/日期可见性。新增字段可选，旧 version/1 配置与分享保持有效。group 和 choiceLabels 只影响表单分组/显示，不改变 JSON 选项值，注册时严格校验。“恢复默认外观”只恢复当前主题注册默认，保留内容选择、顺序与目标。明确行距/段间距优先于 density，系统配色只在 auto 时生效；全文与配图不能因字号或间距变化而丢失，详见阅读设置规格。
+展示设置根据官方阅读产品及 W3C 资料扩展配色、字号、字体、宽度、正文行距、段间距、字/词间距、对齐以及已有作者/日期可见性。新增字段可选，旧 version/1 配置与分享保持有效。group 和 choiceLabels 只影响表单分组/显示，不改变 JSON 选项值，注册时严格校验。“恢复默认外观”只恢复当前主题注册默认，保留内容选择、顺序与目标。明确行距/段间距优先于 density，系统配色只在 auto 时生效；全文与配图不能因字号或间距变化而丢失，后续扩展为 26 项参数、八组、120 可选值，加入字重、标题、首行缩进、链接、代码、图片、表格、列表和标签样式；全部字段及数值见 [维度扩展规格](expanded-reading-controls.md)。
 
 已提交主题的 id/version/options 发生语义变化，或者当前配置被清除时，两个适配器均丢弃旧主题表单草稿并展示当前配置。比较忽略对象键顺序，保留数组顺序；同主题只改变参数也必须同步。仅修改内容选择、切换首页/详情、更新请求/保存提示时，已提交主题未变化，保留未提交表单参数。表单同步本身不能写个人记录或派发主题提交。
 

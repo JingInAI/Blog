@@ -6,23 +6,41 @@ export interface ThemeRegistration {
   validate(options: JsonObject): readonly ThemeValidationIssue[];
   migrations?: Readonly<Record<number, (config: DisplayConfig) => DisplayConfig>>;
 }
+function enumOption(key: string, label: string, group: string, values: readonly (readonly [string, string])[], defaultValue?: string): ThemeOptionDescriptor {
+  return { key, label, group, kind: 'enum', required: false, choices: values.map(([value]) => value), choiceLabels: values.map(([, name]) => name),
+    ...(defaultValue === undefined ? {} : { defaultValue }) };
+}
 const basicOptions: ThemeChoice['options'] = freeze([
-  { key: 'colorScheme', label: '配色', group: '外观', kind: 'enum', required: false, choices: ['auto', 'light', 'dark', 'sepia'], choiceLabels: ['跟随系统', '浅色', '深色', '暖纸色'] },
-  { key: 'fontSize', label: '字号', group: '文字', kind: 'enum', required: false, choices: ['normal', 'large', 'larger', 'largest'], choiceLabels: ['常规（100%）', '较大（125%）', '大号（150%）', '超大（200%）'] },
-  { key: 'fontFamily', label: '字体', group: '文字', kind: 'enum', required: false, choices: ['sans', 'serif', 'mono'], choiceLabels: ['无衬线', '衬线', '等宽'] },
-  { key: 'density', label: '间距', group: '排版', kind: 'enum', required: false, defaultValue: 'comfortable', choices: ['comfortable', 'compact'], choiceLabels: ['宽松', '紧凑'] },
-  { key: 'contentWidth', label: '阅读宽度', group: '排版', kind: 'enum', required: false, choices: ['full', 'comfortable', 'narrow'], choiceLabels: ['铺满可用空间', '适中', '窄栏'] },
-  { key: 'lineHeight', label: '正文行距', group: '排版', kind: 'enum', required: false, choices: ['normal', 'relaxed', 'wide'], choiceLabels: ['1.5 倍', '1.9 倍', '2 倍'] },
-  { key: 'paragraphSpacing', label: '段落间距', group: '排版', kind: 'enum', required: false, choices: ['normal', 'relaxed', 'wide'], choiceLabels: ['常规（1 倍字号）', '宽松（1.5 倍字号）', '加宽（2 倍字号）'] },
-  { key: 'letterSpacing', label: '字间距', group: '排版', kind: 'enum', required: false, choices: ['normal', 'wide'], choiceLabels: ['常规', '加宽（0.12 倍字号）'] },
-  { key: 'wordSpacing', label: '词间距', group: '排版', kind: 'enum', required: false, choices: ['normal', 'wide'], choiceLabels: ['常规', '加宽（0.16 倍字号）'] },
-  { key: 'textAlign', label: '正文对齐', group: '排版', kind: 'enum', required: false, choices: ['start', 'justify'], choiceLabels: ['起始侧对齐', '两端对齐'] },
+  enumOption('colorScheme', '配色', '外观', [['auto', '跟随系统'], ['light', '浅色'], ['dark', '深色'], ['sepia', '暖纸色'], ['slate', '冷灰色'], ['night', '午夜蓝'], ['contrast', '高对比黑色']]),
+  enumOption('fontSize', '字号', '文字', [['small', '较小（87.5%）'], ['normal', '常规（100%）'], ['medium', '稍大（112.5%）'], ['large', '较大（125%）'], ['larger', '大号（150%）'], ['extra', '加大（175%）'], ['largest', '超大（200%）'], ['huge', '特大（250%）']]),
+  enumOption('fontFamily', '字体', '文字', [['sans', '无衬线'], ['serif', '衬线'], ['mono', '等宽'], ['system', '系统界面字体'], ['rounded', '圆体'], ['kai', '楷体']]),
+  enumOption('fontWeight', '正文字重', '文字', [['regular', '常规（400）'], ['medium', '中等（500）'], ['semibold', '半粗（600）'], ['bold', '粗体（700）']]),
+  enumOption('headingScale', '标题大小', '文字', [['compact', '缩小（90%）'], ['normal', '常规（100%）'], ['large', '较大（115%）'], ['larger', '大号（130%）'], ['largest', '超大（150%）']]),
+  enumOption('density', '间距', '排版', [['compact', '紧凑'], ['normal', '适中'], ['comfortable', '宽松'], ['loose', '疏朗'], ['airy', '开阔']], 'comfortable'),
+  enumOption('contentWidth', '阅读宽度', '排版', [['full', '铺满可用空间'], ['wide', '宽栏（52rem）'], ['comfortable', '适中（40rem）'], ['medium', '中窄（34rem）'], ['narrow', '窄栏（28rem）'], ['slim', '极窄（22rem）']]),
+  enumOption('lineHeight', '正文行距', '排版', [['tight', '紧凑（1.3 倍）'], ['normal', '1.5 倍'], ['comfortable', '1.7 倍'], ['relaxed', '1.9 倍'], ['wide', '2 倍'], ['extra', '加宽（2.4 倍）']]),
+  enumOption('paragraphSpacing', '段落间距', '排版', [['compact', '紧凑（0.5 倍字号）'], ['normal', '常规（1 倍字号）'], ['relaxed', '宽松（1.5 倍字号）'], ['wide', '加宽（2 倍字号）'], ['extra', '更宽（2.5 倍字号）'], ['spacious', '开阔（3 倍字号）']]),
+  enumOption('letterSpacing', '字间距', '排版', [['normal', '常规'], ['fine', '微宽（0.03 倍字号）'], ['relaxed', '稍宽（0.06 倍字号）'], ['wide', '加宽（0.12 倍字号）'], ['extra', '更宽（0.18 倍字号）']]),
+  enumOption('wordSpacing', '词间距', '排版', [['normal', '常规'], ['fine', '微宽（0.04 倍字号）'], ['relaxed', '稍宽（0.08 倍字号）'], ['wide', '加宽（0.16 倍字号）'], ['extra', '更宽（0.24 倍字号）']]),
+  enumOption('textAlign', '正文对齐', '排版', [['start', '起始侧对齐'], ['justify', '两端对齐'], ['center', '居中'], ['end', '末尾侧对齐']]),
+  enumOption('paragraphIndent', '首行缩进', '排版', [['none', '不缩进'], ['small', '1 倍字号'], ['normal', '2 倍字号'], ['large', '3 倍字号']]),
+  enumOption('linkStyle', '正文链接样式', '链接', [['underline', '实线下划线'], ['dotted', '点状下划线'], ['thick', '加粗下划线'], ['highlight', '底色突出']]),
+  enumOption('codeFontSize', '代码字号', '代码', [['small', '较小（80%）'], ['compact', '稍小（90%）'], ['normal', '常规（100%）'], ['large', '较大（110%）'], ['larger', '大号（125%）']]),
+  enumOption('codeWrap', '代码换行', '代码', [['wrap', '保留空白并换行'], ['scroll', '保留原行并横向滚动'], ['break', '长词也换行']]),
+  enumOption('imageWidth', '图片宽度', '图片', [['natural', '原始尺寸，限制为可用宽度'], ['full', '铺满可用宽度'], ['large', '75% 可用宽度'], ['medium', '50% 可用宽度'], ['small', '35% 可用宽度']]),
+  enumOption('imageAlign', '图片对齐', '图片', [['inline', '随原文行内排列'], ['start', '单独一行，起始侧'], ['center', '单独一行，居中'], ['end', '单独一行，末尾侧']]),
+  enumOption('imageCorners', '图片圆角', '图片', [['square', '直角'], ['normal', '小圆角（4px）'], ['soft', '柔和（12px）'], ['round', '大圆角（24px）']]),
+  enumOption('imageBorder', '图片边框', '图片', [['none', '无边框'], ['thin', '细线（1px）'], ['medium', '中线（2px）'], ['thick', '粗线（4px）']]),
+  enumOption('tableDensity', '表格间距', '表格与列表', [['compact', '紧凑'], ['normal', '常规'], ['relaxed', '宽松'], ['roomy', '开阔']]),
+  enumOption('tableStripes', '表格行底色', '表格与列表', [['none', '无交替底色'], ['soft', '轻柔交替'], ['strong', '明显交替']]),
+  enumOption('listSpacing', '列表项间距', '表格与列表', [['none', '无额外间距'], ['compact', '紧凑（0.2 倍字号）'], ['normal', '常规（0.4 倍字号）'], ['relaxed', '宽松（0.75 倍字号）'], ['wide', '加宽（1 倍字号）']]),
+  enumOption('tagStyle', '标签样式', '内容信息', [['plain', '纯文字'], ['soft', '柔和底色'], ['outline', '描边'], ['pill', '胶囊']]),
   { key: 'showTags', label: '显示标签', group: '内容信息', kind: 'boolean', required: false, defaultValue: true },
   { key: 'hideMetadata', label: '隐藏作者和日期', group: '内容信息', kind: 'boolean', required: false }
 ]);
 function basicValidate(options: JsonObject): ThemeValidationIssue[] {
   const issues: ThemeValidationIssue[] = [];
-  if (options.density !== 'comfortable' && options.density !== 'compact') issues.push({ key: 'density', code: 'invalid-value' });
+  if (!['compact', 'normal', 'comfortable', 'loose', 'airy'].includes(options.density as string)) issues.push({ key: 'density', code: 'invalid-value' });
   if (typeof options.showTags !== 'boolean') issues.push({ key: 'showTags', code: 'invalid-value' });
   return issues;
 }

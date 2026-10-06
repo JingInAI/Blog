@@ -4,7 +4,7 @@
 
 ## 主题
 
-注册源为 `packages/theme-contracts/src/index.ts`。每项明确 id、version、frameworkIds、选项描述、默认视觉值与验证器。现有 minimal-list/card-grid 在 density、showTags 基础上新增十个阅读外观/元信息字段，见 [多维度展示](specs/reading-preferences.md)；主题不生成摘要、图片或其他事实。新字段可选，themeVersion 保持 1，旧配置仍有效。
+注册源为 `packages/theme-contracts/src/index.ts`。每项明确 id、version、frameworkIds、选项描述、默认视觉值与验证器。现有 minimal-list/card-grid 共用 26 个展示参数，分八组、24 个枚举和两个布尔开关，见 [当前参数目录](specs/expanded-reading-controls.md) 与 [首轮依据](specs/reading-preferences.md)；主题不生成摘要、图片或其他事实。新字段可选，themeVersion 保持 1，旧配置仍有效。
 
 选项描述的可选 group 提供非空分组名，choiceLabels 提供与 choices 等长的非空显示名称，且只用于枚举；两项在注册阶段校验。标签不改变 JSON 值。旧描述没有 group 时进入“风格参数”，没有 choiceLabels 时按原 JSON 显示。两内置主题之间切换保留共同阅读偏好；扩展主题仍按新描述初始化，不能带入不匹配参数。
 
