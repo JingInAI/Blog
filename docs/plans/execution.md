@@ -373,4 +373,6 @@ npm run check
 - 新增三项逻辑回归，覆盖旧配置、值/类型拒绝、分组/标签校验及跨框架分享。完整检查与真实长文/线上结果完成后追加；本机报告保存于 .generated/reading-preferences/。
 - CI 标记下 npm run check 通过类型/边界、158 项逻辑/构建、双生产构建和 79 项浏览器，日志 /tmp/blog-reading-full.log。进一步将窄屏面板限制为 min(60vh, 32rem) 内部滚动后，全部 79 项浏览器再次通过，日志 /tmp/blog-reading-browser-final.log；新增检查覆盖面板限高、所有控件可访问，320/390 像素下 200% 字号与宽间距无横向溢出。
 - 浅色/深色/暖纸色的九类正文及界面文字抽样对比度均不低于 4.5:1。两框架最终 /Blog/ 候选的真实 RSI 验收通过，全量文本、27 标题/30 链接/22 alt/22 图解码正确，全部新增参数直接生效、分享/保存/刷新和手机布局正常，无页面或非预期网络错误。200% 字号 32px、双倍行距/段间距 64px、字/词间距 3.84/5.12px、窄栏 448px；报告 local-longform.json。
-- 内容 buildId 保持 9925b008ea691efcbd916dc9530429ff557394c391e5c48b811cf05af835b8db，正文与配图未修改。前端脚本和样式改变，已打开的旧页面需刷新一次加载新版本；真实发布结果取得后追加。
+- 内容 buildId 保持 9925b008ea691efcbd916dc9530429ff557394c391e5c48b811cf05af835b8db，正文与配图未修改。前端脚本和样式改变，已打开的旧页面需刷新一次加载新版本。
+- 发布提交 721bfdfb169d9f362f65eb726d7738d9ff5b15ca 的 [Actions 运行 37444744447](https://github.com/JingInAI/Blog/actions/runs/37444744447) 中 verify/build-pages/deploy 全部成功。09:45 UTC 真实 Vue 页面新增参数外观、完整正文/27 标题/30 链接/22 alt/22 图、分享/保存/刷新和桌面/手机验收通过，实际外观与最终候选一致，无页面或非预期网络错误；报告 online-longform.json。
+- 30 个线上文件均 HTTP 200、SHA-256 与最终 Vue 候选一致，源码/配置/文档的核对路径为 404；报告 online-artifacts.json、运行状态 actions-status.json 和截图均在 .generated/reading-preferences/。收尾普通文档提交不重复部署，原内容、上一轮即时响应与各轮失败证据保留。

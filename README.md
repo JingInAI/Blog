@@ -4,7 +4,7 @@
 
 内容模块当前包含一篇用户授权的 RSI 长文，标题、摘要、标签和 22 张配图来自指定原文；导入规则和测试见 [内容导入记录](docs/specs/understanding-rsi-import.md)。框架在构建时选择，内容和风格在网页中选择。
 
-线上站点：[https://jinginai.github.io/Blog/](https://jinginai.github.io/Blog/)，Vue 已发布；[对应的 Actions 运行](https://github.com/JingInAI/Blog/actions/runs/37428114955) 验证、构建和部署全部成功。
+线上站点：[https://jinginai.github.io/Blog/](https://jinginai.github.io/Blog/)，Vue 已发布多维度阅读设置；[对应的 Actions 运行](https://github.com/JingInAI/Blog/actions/runs/37444744447) 验证、构建和部署全部成功。
 
 需要 Node 24 LTS。
 
