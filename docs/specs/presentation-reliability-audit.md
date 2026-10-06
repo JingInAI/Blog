@@ -1,6 +1,6 @@
 # 展示状态与配置边界可靠性审查
 
-日期：2026-10-06。用户要求审查代码的准确性、鲁棒性和可靠性并修复问题。范围包括新增阅读偏好、两套渲染器、控制器配置、迁移和请求地址，以及既有正文/资源/保存/分享契约。实现、定向回归及完整本地验收已完成，真实发布验收进行中。
+日期：2026-10-06。用户要求审查代码的准确性、鲁棒性和可靠性并修复问题。范围包括新增阅读偏好、两套渲染器、控制器配置、迁移和请求地址，以及既有正文/资源/保存/分享契约。实现、定向回归、完整本地验收及真实 Pages 发布验收均已完成。
 
 ## 发现与修复
 
@@ -49,4 +49,14 @@ HTTP 来源的 baseUrl 已校验，但绝对端点可替换基础 URL。requestJ
 
 新增逻辑测试见 [presentation-reliability.test.ts](../../tests/presentation-reliability.test.ts)，浏览器测试见 [reading-preferences.spec.ts](../../tests/browser/reading-preferences.spec.ts) 与 [theme-form.spec.ts](../../tests/browser/theme-form.spec.ts)。扩展夹具的多键 JSON 枚举只在测试构建出现，不进入生产内容。
 
-CI 标记下 npm run check 完整通过类型/模块边界、167 项逻辑/构建、双框架生产构建和 89 项浏览器，日志 /tmp/blog-presentation-full.log；九项新增逻辑回归全部通过。随后独立生成 Vue/React 的 /Blog/ 发布候选并完成真实 RSI 长文验收，日志 /tmp/blog-presentation-longform.log，结果 local-longform.json。两框架同任务字号+配色操作、恢复默认、实际外观、全部正文/27 标题/30 链接/22 alt/22 图解码、分享/保存/刷新以及 1280/390 像素布局均正确，无页面或非预期请求错误。内容 buildId 保持 9925b008ea691efcbd916dc9530429ff557394c391e5c48b811cf05af835b8db，内容与 CSS 未修改；Vue 脚本变为 index-BzeoEtLB.js、React 为 index-CV6tXdW0.js。真实 Pages 结果完成后追加。审查不能证明不存在任何未知缺陷；真实生产 API/CORS/授权仍未接入，不将本机 HTTP 或模拟响应计为生产后端验收。证据与截图位于本机忽略目录 .generated/presentation-reliability/，既有内容、前轮成功和失败报告保留。
+CI 标记下 npm run check 完整通过类型/模块边界、167 项逻辑/构建、双框架生产构建和 89 项浏览器，日志 /tmp/blog-presentation-full.log；九项新增逻辑回归全部通过。随后独立生成 Vue/React 的 /Blog/ 发布候选并完成真实 RSI 长文验收，日志 /tmp/blog-presentation-longform.log，结果 local-longform.json。两框架同任务字号+配色操作、恢复默认、实际外观、全部正文/27 标题/30 链接/22 alt/22 图解码、分享/保存/刷新以及 1280/390 像素布局均正确，无页面或非预期请求错误。内容 buildId 保持 9925b008ea691efcbd916dc9530429ff557394c391e5c48b811cf05af835b8db，内容与 CSS 未修改；Vue 脚本变为 index-BzeoEtLB.js、React 为 index-CV6tXdW0.js。真实 Pages 结果见下文。审查不能证明不存在任何未知缺陷；真实生产 API/CORS/授权仍未接入，不将本机 HTTP 或模拟响应计为生产后端验收。证据与截图位于本机忽略目录 .generated/presentation-reliability/，既有内容、前轮成功和失败报告保留。
+
+测试后核对 25 个固定测试端口均关闭，.generated 中本轮 dev/build 实例目录为空，Playwright 最后运行状态 passed 且无失败项；完整日志统计再次匹配 167/167 与 89 passed。结果保存为 local-checks.json，未使用绑定旧轮计数的历史脚本生成本轮结论。
+
+## 发布验收
+
+发布提交 80f4129f045231d03ce79bd1b6da09132e3c08ac 的 [Actions 运行 37449332133](https://github.com/JingInAI/Blog/actions/runs/37449332133) 中 verify/build-pages/deploy 全部成功；只在部署完成后执行实际 HTTPS 验收，不把排队或构建成功视为上线。状态见 actions-status.json。
+
+2026-10-06 10:28 UTC 真实 Vue 页面验收通过。同任务修改字号和配色、恢复默认、两种布局及间距、完整正文/27 标题/30 链接/22 alt/22 图解码、分享刷新/显式保存/个人刷新、桌面/手机布局均正确，pageErrors/badResponses/failedRequests 均为空。200% 字号为 32px，双倍行距/段间距为 64px，窄栏为 448px；线上与本地候选测量一致，结果 online-longform.json。
+
+30 个线上文件全部 HTTP 200，SHA-256 与 dist/presentation-reliability-vue 候选逐一一致，结果 online-artifacts.json。核对 README、package.json、blog.config.json、原始 Markdown 与导入审查路径均为 404。全部脚本、截图与结果保存在 .generated/presentation-reliability/，不进入发布产物。正文、配图、内容 buildId 与 CSS 未改；已打开的旧页面需刷新一次加载新脚本。收尾文档普通提交不触发重复部署。

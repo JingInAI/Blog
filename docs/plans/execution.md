@@ -385,3 +385,8 @@ npm run check
 - 八项逻辑回归及十项定向浏览器通过。首次来源切换夹具用单槽存储导致旧记录误读，改为来源键隔离 Map 后通过；没有修改产品存储键或放宽身份断言。完整检查、迁移补验和真实长文/线上结果完成后追加。证据目录 .generated/presentation-reliability/，原内容、样式和前轮报告不改。
 
 - CI 标记下完整检查通过类型/模块边界、167 项逻辑/构建（含继承迁移补验）、双框架构建及 89 项浏览器，日志 /tmp/blog-presentation-full.log。独立 Vue/React /Blog/ 候选真实 RSI 验收全部通过，记录 local-longform.json 与 /tmp/blog-presentation-longform.log；同任务字号+配色、恢复、完整正文/27 标题/30 链接/22 alt/22 图、分享保存刷新及 1280/390 像素布局正确，无页面或非预期网络错误。内容 buildId、源正文、配图和 CSS 保持；两框架脚本改变。
+
+- 复核 25 个测试端口均关闭、临时 dev/build 实例目录为空、Playwright 最后状态 passed，无失败项；结果 local-checks.json。发布提交 80f4129f045231d03ce79bd1b6da09132e3c08ac 已推送，对应 Actions 运行 37449332133，最终部署与线上验收结果另行追加。
+
+- 发布提交 80f4129f045231d03ce79bd1b6da09132e3c08ac 的 [Actions 运行 37449332133](https://github.com/JingInAI/Blog/actions/runs/37449332133) 中 verify/build-pages/deploy 全部成功。10:28 UTC 真实 Vue 页面的同任务字号/配色、恢复默认、双风格及间距、全量正文/27 标题/30 链接/22 alt/22 图、分享/保存/刷新及桌面/手机布局均通过，页面和非预期请求错误为空；测量与候选一致，结果 online-longform.json。
+- 30 个线上文件全部 HTTP 200、SHA-256 与本轮 Vue 候选逐一一致，核对的源码/配置/文档路径均 404，结果 online-artifacts.json；Actions 状态、截图和本机结果保存在 .generated/presentation-reliability/。已更新设计、计划、使用和扩展文档，原内容及历史记录保留；收尾文档普通提交不重复部署。
