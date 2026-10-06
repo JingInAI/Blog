@@ -1,8 +1,37 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { choices, normalizeConfig, ThemeConfigError, verifyThemeImplementations } from '@blog/theme-contracts';
+import { choices, normalizeConfig, readingClasses, themeSelectionOptions, ThemeConfigError, verifyThemeImplementations } from '@blog/theme-contracts';
 import type { ThemeRegistration } from '@blog/theme-contracts';
 import { config } from './support.ts';
+test('reading preferences keep legacy defaults, reject invalid values and round-trip across frameworks', () => {
+  const options = { ...config().themeOptions, colorScheme: 'auto', fontSize: 'largest', fontFamily: 'serif', contentWidth: 'narrow', lineHeight: 'wide', paragraphSpacing: 'wide', letterSpacing: 'wide', wordSpacing: 'wide', textAlign: 'start', hideMetadata: true };
+  for (const framework of ['vue', 'react']) {
+    assert.deepEqual(normalizeConfig(config(), framework), config());
+    const normalized = normalizeConfig({ ...config(), themeOptions: options }, framework);
+    assert.deepEqual(normalized.themeOptions, options);
+    assert.deepEqual(normalizeConfig(JSON.parse(JSON.stringify(normalized)), framework), normalized);
+    for (const key of Object.keys(options)) {
+      assert.throws(() => normalizeConfig({ ...config(), themeOptions: { ...options, [key]: key === 'hideMetadata' || key === 'showTags' ? 'true' : 'invented' } }, framework), ThemeConfigError);
+    }
+    const target = choices(framework).find(theme => theme.id === 'card-grid')!;
+    assert.deepEqual(themeSelectionOptions(target, normalized), options);
+    const selected = themeSelectionOptions(target, normalized);
+    selected.fontSize = 'normal'; assert.equal(normalized.themeOptions.fontSize, 'largest');
+    assert.equal(readingClasses({ ...normalized, themeId: 'custom' }), '');
+    assert.equal(readingClasses({ ...normalized, themeOptions: { fontSize: 'largest bad-class', colorScheme: ['dark'] } }), '');
+    assert.match(readingClasses(normalized), /reading-fontSize-largest/);
+    assert.deepEqual(themeSelectionOptions(target, { ...normalized, themeId: 'custom' }), target.defaults);
+  }
+});
+test('option labels and groups are validated without changing JSON enum values', () => {
+  const theme: ThemeRegistration = { id: 'test', label: 'test', version: 1, frameworkIds: ['vue'], defaults: {}, validate: () => [],
+    options: [{ key: 'tone', label: 'tone', group: '外观', kind: 'enum', required: false, choices: [null, { mode: 'author' }], choiceLabels: ['无', '作者风格'] }] };
+  assert.deepEqual(choices('vue', [theme])[0].options, theme.options);
+  for (const changes of [{ group: '' }, { group: 1 }, { choiceLabels: ['无'] }, { choiceLabels: ['无', ''] }, { choiceLabels: ['无', 1] }, { choiceLabels: '无' }, { kind: 'string' }]) {
+    assert.throws(() => choices('vue', [{ ...theme, options: [{ ...theme.options[0], ...changes } as ThemeRegistration['options'][number]] }]));
+  }
+  assert.deepEqual(normalizeConfig({ ...config([], 'test'), themeOptions: { tone: { mode: 'author' } } }, 'vue', [theme]).themeOptions, { tone: { mode: 'author' } });
+});
 test('T08: enum parameters reject JSON arrays instead of coercing them into a valid choice', () => {
   assert.throws(() => normalizeConfig({ ...config(), themeOptions: { density: ['compact'] } }, 'react'), error => error instanceof ThemeConfigError && error.issues.length === 1 && error.issues[0].key === 'density' && error.issues[0].code === 'invalid-value');
 });

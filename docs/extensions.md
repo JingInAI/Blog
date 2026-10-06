@@ -4,7 +4,9 @@
 
 ## 主题
 
-注册源为 `packages/theme-contracts/src/index.ts`。每项明确 id、version、frameworkIds、选项描述、默认视觉值与验证器。现有 minimal-list/card-grid 均支持 `density`（comfortable/compact）和 `showTags`（boolean）；主题不生成摘要、图片或其他事实。
+注册源为 `packages/theme-contracts/src/index.ts`。每项明确 id、version、frameworkIds、选项描述、默认视觉值与验证器。现有 minimal-list/card-grid 在 density、showTags 基础上新增十个阅读外观/元信息字段，见 [多维度展示](specs/reading-preferences.md)；主题不生成摘要、图片或其他事实。新字段可选，themeVersion 保持 1，旧配置仍有效。
+
+选项描述的可选 group 提供非空分组名，choiceLabels 提供与 choices 等长的非空显示名称，且只用于枚举；两项在注册阶段校验。标签不改变 JSON 值。旧描述没有 group 时进入“风格参数”，没有 choiceLabels 时按原 JSON 显示。两内置主题之间切换保留共同阅读偏好；扩展主题仍按新描述初始化，不能带入不匹配参数。
 
 注册表中的主题 ID 必须唯一，包括分别声明给不同框架的同名项；跨框架支持放在同一个 frameworkIds 数组中，共用版本和描述。ID/标签、正安全整数版本、非空且无重复的框架数组、选项 kind/required 和默认值均在生成主题目录、规范化配置和核对适配器时检查。非法注册不能靠列表顺序或当前框架被隐藏。
 
@@ -12,7 +14,7 @@
 
 主题、枚举和布尔选择项变化立即提交共享主题事件；默认参数完整的主题首次选择即可建立空内容选择。缺少必填参数或存在无效值时保留原配置和记录，显示共享校验错误，完成后的合法事件即时生效。文本/数字输入仍可保留草稿并手动提交。清除自动选择项时采用明确默认，否则保留字段缺失并校验；不猜测事实字段。
 
-required 表示 JSON 字段必须存在：false、枚举中的 null 和空字符串均可以是合法已填写值，不能用 HTML required 强迫勾选或非空。控件使用 aria-required 描述要求，提交后由共享校验器显示字段错误。缺失的枚举显示“请选择”，不代选第一项；选项按完整 JSON 往返，null 不当作缺失。数字支持有限小数；清空数字会移除草稿字段；清空自动提交的枚举选择时，有明确默认立即恢复，没有默认则移除字段并校验，保持合法缺失或返回 required 错误。
+required 表示 JSON 字段必须存在：false、枚举中的 null 和空字符串均可以是合法已填写值，不能用 HTML required 强迫勾选或非空。控件使用 aria-required 描述要求，提交后由共享校验器显示字段错误。缺失的必填枚举显示“请选择”，可选枚举显示“使用默认”，不代选第一项；选项按完整 JSON 往返，null 不当作缺失。数字支持有限小数；清空数字会移除草稿字段；清空自动提交的枚举选择时，有明确默认立即恢复，没有默认则移除字段并校验，保持合法缺失或返回 required 错误。
 
 共享层始终按选项描述严格检查类型和 enum choices，自定义 validate 只增加约束，不能用隐式转换放宽字段类型。描述的 defaultValue 与注册项 defaults 使用同一合并规则；同字段两处声明必须语义相等。未知默认字段、无效类型、重复选项键或没有 choices 的 enum 会报注册错误，不能让表单和规范化配置各用一套默认值。
 
@@ -60,7 +62,7 @@ requestJson 从 Response.arrayBuffer() 读取原始字节，严格 UTF-8 解码�
 
 当前测试中的 custom 框架主题注册、宿主桩与来源桩示范扩展边界，未将新框架耦合到核心。受控 HTTP 与 Chromium 场景位于 `tests/`，测试夹具由测试生成，不提交到生产内容。
 
-`tests/theme-form-fixture/` 通过真实 Vue/React 适配器和共享控制器验证扩展选项的表单、提交、存储与刷新；`tests/browser/theme-form.spec.ts` 验证 false/null/空字符串、小数、必填缺失、可选清除及与对象原型同名的合法字段，合计八项浏览器场景。共享契约另验证自有值、显式默认及 JSON 往返。该入口由浏览器测试服务单独构建，与 `apps/` 的生产入口和主题注册表隔离。
+`tests/theme-form-fixture/` 通过真实 Vue/React 适配器和共享控制器验证扩展选项的表单、提交、存储与刷新；`tests/browser/theme-form.spec.ts` 验证 false/null/空字符串、小数、必填缺失、可选清除及与对象原型同名的合法字段，合计十项浏览器场景（含两项即时必填参数保护）。共享契约另验证自有值、显式默认及 JSON 往返。该入口由浏览器测试服务单独构建，与 `apps/` 的生产入口和主题注册表隔离。
 
 内置 HTTP 来源、HTTP/static 工厂及探测器保存创建时选项快照；HTTP 端点对象独立复制，工厂 identity 冻结。修改调用者原对象不能改变已有来源的 sourceId、版本、端点、资源基址、超时或传输配置。新配置需创建新工厂并通过 changeSource 切换。回调函数仍按声明调用，其外部闭包状态不在快照范围内；调用者对象不被深度冻结。
 

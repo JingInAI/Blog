@@ -7,6 +7,7 @@ const el = (tag: string, props: Record<string, unknown> | null, ...children: UIC
 const image = (props: { key: string; id: string; node: Extract<import('@blog/contracts').SafeNode, { type: 'image' }>; resource: import('@blog/contracts').RenderedResource; context: import('@blog/contracts').RendererContext }): UIElement => createElement(ImageSlot, props);
 import type { ContentRecord, ContentSummary, ItemState, JsonObject, JsonValue, RendererContext, SafeNode, ThemeChoice, ViewModel } from '@blog/contracts';
 import { ImageSlot } from './image.ts';
+import { readingClasses, themeSelectionOptions } from '@blog/theme-contracts';
 export interface UiState { draftTheme: string; draftOptions: JsonObject; copyMessage: string; copyUrl: string; }
 export type UiUpdate = UiState | ((state: UiState) => UiState);
 export const initialUiState = (): UiState => ({ draftTheme: '', draftOptions: {}, copyMessage: '', copyUrl: '' });
@@ -32,8 +33,8 @@ export function renderUi(model: ViewModel, context: RendererContext, state: UiSt
   const diagnostics = (items: readonly { code: string; fieldPath?: string }[]): UIElement | null => !items.length ? null : el('details', { className: 'diagnostics' },
     el('summary', null, '查看内容诊断'), ...items.map((d, i) => el('p', { key: i }, d.code === 'unknown-api-field' ? '来源提供了未支持的字段：' + d.fieldPath : d.code === 'raw-html-as-text' ? '原始 HTML 按文本显示' : '不安全链接按文本显示')));
   const metadata = (content: ContentSummary | ContentRecord): UIElement => el('div', { className: 'metadata' },
-    content.author === undefined ? null : el('span', null, content.author),
-    content.publishedAt === undefined ? null : el('time', { dateTime: content.publishedAt }, content.publishedAt),
+    config?.themeOptions.hideMetadata === true || content.author === undefined ? null : el('span', null, content.author),
+    config?.themeOptions.hideMetadata === true || content.publishedAt === undefined ? null : el('time', { dateTime: content.publishedAt }, content.publishedAt),
     config?.themeOptions.showTags === false || content.tags === undefined ? null : el('span', { className: 'tags' }, ...content.tags.map((t, i) => el('span', { key: i }, t))));
   function bodyNode(node: SafeNode, item: Extract<ItemState, { status: 'ready' }>, position: string): UIChild {
     if (node.type === 'text') return node.value;
@@ -83,30 +84,36 @@ export function renderUi(model: ViewModel, context: RendererContext, state: UiSt
       if (immediate && selectedTheme) context.dispatch({ type: 'set-theme', themeId: selectedTheme, options: next });
     }
     function changeTheme(id: string): void {
-      const next = { ...(model.themes.find(t => t.id === id)?.defaults ?? {}) };
+      const next = themeSelectionOptions(model.themes.find(t => t.id === id), config);
       setState({ ...state, draftTheme: id, draftOptions: next });
       if (id) context.dispatch({ type: 'set-theme', themeId: id, options: next });
     }
     const ids = config?.contentIds ?? [];
+    const groups = [...new Set((descriptor?.options ?? []).map(option => option.group ?? '风格参数'))];
     editor = el('aside', { className: 'editor', 'aria-label': '展示设置' },
       el('h2', null, '展示设置'),
       el('form', { onSubmit: (event: { preventDefault(): void }) => { event.preventDefault(); context.dispatch({ type: 'set-theme', themeId: selectedTheme, options }); } },
-        el('p', { className: 'muted' }, descriptor?.options.some(d => d.kind === 'string' || d.kind === 'number') ? '风格和选择项即时生效；文字或数字参数填写后点击“应用风格”。' : '风格、间距和标签显示选择后立即生效。'),
+        el('p', { className: 'muted' }, descriptor?.options.some(d => d.kind === 'string' || d.kind === 'number') ? '风格和选择项即时生效；文字或数字参数填写后点击“应用风格”。' : '展示选项选择后立即生效；“使用默认”恢复默认外观。'),
         el('label', null, '网页风格', el('select', { 'aria-label': '网页风格', value: selectedTheme, onChange: (e: { target: EventTarget | null }) => changeTheme(valueFrom(e).value) },
           el('option', { value: '' }, '请选择风格'), ...model.themes.map(t => el('option', { key: t.id, value: t.id, disabled: t.availability !== 'available' }, t.label + (t.availability !== 'available' ? '（当前框架不支持）' : ''))))),
-        ...(descriptor?.options ?? []).map(d => {
+        ...groups.map(group => el('fieldset', { key: group, className: 'option-group' }, el('legend', null, group), ...(descriptor?.options ?? []).filter(d => (d.group ?? '风格参数') === group).map(d => {
           // Required means a JSON value must be present, including false, null or an empty string.
           const common = { 'aria-label': d.label, 'aria-required': d.required, name: d.key };
           const value = Object.hasOwn(options, d.key) ? options[d.key] : undefined;
           let control: UIElement;
           if (d.kind === 'boolean') control = el('input', { ...common, type: 'checkbox', checked: value === true, onChange: (e: { target: EventTarget | null }) => changeOption(d.key, valueFrom(e).checked, true) });
           else if (d.kind === 'enum') control = el('select', { ...common, value: Object.hasOwn(options, d.key) ? JSON.stringify(options[d.key]) : '', onChange: (e: { target: EventTarget | null }) => changeOption(d.key, valueFrom(e).value === '' ? undefined : JSON.parse(valueFrom(e).value), true) },
-            el('option', { value: '' }, '请选择'), ...(d.choices ?? []).map((v, i) => el('option', { key: i, value: JSON.stringify(v) }, typeof v === 'string' ? v : JSON.stringify(v))));
+            el('option', { value: '' }, d.required ? '请选择' : '使用默认'), ...(d.choices ?? []).map((v, i) => el('option', { key: i, value: JSON.stringify(v) }, d.choiceLabels?.[i] ?? (typeof v === 'string' ? v : JSON.stringify(v)))));
           else control = el('input', { ...common, type: d.kind === 'number' ? 'number' : 'text', ...(d.kind === 'number' ? { step: 'any' } : {}), value: String(value ?? ''), onInput: (e: { target: EventTarget | null }) => changeOption(d.key, d.kind === 'number' ? valueFrom(e).value === '' ? undefined : Number(valueFrom(e).value) : valueFrom(e).value) });
           return el('label', { key: d.key }, d.label, control, ...model.themeValidation.filter(issue => issue.key === d.key).map(issue => error(issue.code)));
-        }),
+        }))),
         ...model.themeValidation.filter(issue => !descriptor?.options.some(d => d.key === issue.key)).map(issue => error(issue.code)),
-        el('button', { type: 'submit', disabled: !selectedTheme }, '应用风格')),
+        el('button', { type: 'submit', disabled: !selectedTheme }, '应用风格'),
+        button('恢复默认外观', () => {
+          const next = { ...(descriptor?.defaults ?? {}) };
+          setState({ ...state, draftTheme: selectedTheme, draftOptions: next });
+          context.dispatch({ type: 'set-theme', themeId: selectedTheme, options: next });
+        }, { disabled: !selectedTheme })),
       catalog ? el('section', { className: 'selection' }, el('h3', null, '选择内容'),
         !config ? el('p', null, '选择风格并完成必填参数后，再选择内容。') : null,
         catalog.status === 'loading' ? el('p', { role: 'status' }, catalog.retained ? '正在刷新目录；保留上次结果。' : '目录加载中') : null,
@@ -145,10 +152,10 @@ export function renderUi(model: ViewModel, context: RendererContext, state: UiSt
   else main = el('main', { className: 'main' },
     model.page.status === 'empty' ? el('p', { className: 'empty' }, '尚未选择内容') : null,
     el('div', { className: 'posts ' + config?.themeId + ' ' + config?.themeOptions.density }, ...model.page.items.map(item => article(item, config?.themeId === 'minimal-list'))));
-  return el('div', { className: 'blog-shell', 'data-framework': FRAMEWORK },
+  return el('div', { className: 'blog-surface ' + readingClasses(config) }, el('div', { className: 'blog-shell', 'data-framework': FRAMEWORK },
     el('header', { className: 'site-header' }, button('首页', context.navigateHome, { className: 'home' }),
       site?.title === undefined ? null : el('h1', null, site.title),
       site?.description === undefined ? null : el('p', null, site.description),
       site?.author === undefined ? null : el('p', null, site.author)),
-    status, el('div', { className: 'workspace' }, main, editor));
+    status, el('div', { className: 'workspace' }, main, editor)));
 }

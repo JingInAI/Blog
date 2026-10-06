@@ -44,6 +44,8 @@ for (const [index, setup] of [
 
     await page.getByLabel('网页风格').selectOption('minimal-list');
     await expect.poll(async () => (await appearance(page)).border).toBe(0);
+    await expect(page.getByLabel('间距', { exact: true })).toHaveValue(JSON.stringify('compact'));
+    await page.getByLabel('间距', { exact: true }).selectOption(JSON.stringify('comfortable'));
     const minimal = await appearance(page);
     expect(minimal.background).not.toBe(comfortable.background);
     expect(minimal.text).toBe(comfortable.text);

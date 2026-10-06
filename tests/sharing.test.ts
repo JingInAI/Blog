@@ -3,6 +3,16 @@ import assert from 'node:assert/strict';
 import { createShareUrl, parseShare, parseRoute, routeHash } from '@blog/render-core';
 import { sessionUrlPort, browserStorage } from '../apps/shared/host.ts';
 import { config, shareSearch } from './support.ts';
+test('reading preferences share unchanged between Vue and React on both deployment paths', () => {
+  const display = { ...config(['文章%+😀']), themeOptions: { ...config().themeOptions, colorScheme: 'dark', fontSize: 'largest', fontFamily: 'serif', contentWidth: 'narrow', lineHeight: 'wide', paragraphSpacing: 'wide', letterSpacing: 'wide', wordSpacing: 'wide', textAlign: 'justify', hideMetadata: true } };
+  for (const framework of ['vue', 'react']) for (const base of ['https://site.test/', 'https://site.test/Blog/']) {
+    const url = new URL(createShareUrl(base, 'test', display, { kind: 'detail', id: '文章%+😀' }, framework));
+    const parsed = parseShare(url.search, 'test', framework === 'vue' ? 'react' : 'vue');
+    assert.equal(parsed.state.status, 'valid');
+    assert.deepEqual(parsed.config, display);
+    assert.deepEqual(parseRoute(url.hash), { kind: 'detail', id: '文章%+😀' });
+  }
+});
 test('T12: root/subpath share and Unicode detail use one encoding with exact source identity', () => {
   for (const base of ['https://site.test/', 'https://site.test/Blog/']) {
     const url = new URL(createShareUrl(base, 'test', config(['编号%+😀']), { kind: 'detail', id: '编号%+😀' }, 'react'));

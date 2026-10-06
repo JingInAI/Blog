@@ -7,12 +7,21 @@ export interface ThemeRegistration {
   migrations?: Readonly<Record<number, (config: DisplayConfig) => DisplayConfig>>;
 }
 const basicOptions: ThemeChoice['options'] = [
-  { key: 'density', label: '间距', kind: 'enum', required: false, defaultValue: 'comfortable', choices: ['comfortable', 'compact'] },
-  { key: 'showTags', label: '显示标签', kind: 'boolean', required: false, defaultValue: true }
+  { key: 'colorScheme', label: '配色', group: '外观', kind: 'enum', required: false, choices: ['auto', 'light', 'dark', 'sepia'], choiceLabels: ['跟随系统', '浅色', '深色', '暖纸色'] },
+  { key: 'fontSize', label: '字号', group: '文字', kind: 'enum', required: false, choices: ['normal', 'large', 'larger', 'largest'], choiceLabels: ['常规（100%）', '较大（125%）', '大号（150%）', '超大（200%）'] },
+  { key: 'fontFamily', label: '字体', group: '文字', kind: 'enum', required: false, choices: ['sans', 'serif', 'mono'], choiceLabels: ['无衬线', '衬线', '等宽'] },
+  { key: 'density', label: '间距', group: '排版', kind: 'enum', required: false, defaultValue: 'comfortable', choices: ['comfortable', 'compact'], choiceLabels: ['宽松', '紧凑'] },
+  { key: 'contentWidth', label: '阅读宽度', group: '排版', kind: 'enum', required: false, choices: ['full', 'comfortable', 'narrow'], choiceLabels: ['铺满可用空间', '适中', '窄栏'] },
+  { key: 'lineHeight', label: '正文行距', group: '排版', kind: 'enum', required: false, choices: ['normal', 'relaxed', 'wide'], choiceLabels: ['1.5 倍', '1.9 倍', '2 倍'] },
+  { key: 'paragraphSpacing', label: '段落间距', group: '排版', kind: 'enum', required: false, choices: ['normal', 'relaxed', 'wide'], choiceLabels: ['常规（1 倍字号）', '宽松（1.5 倍字号）', '加宽（2 倍字号）'] },
+  { key: 'letterSpacing', label: '字间距', group: '排版', kind: 'enum', required: false, choices: ['normal', 'wide'], choiceLabels: ['常规', '加宽（0.12 倍字号）'] },
+  { key: 'wordSpacing', label: '词间距', group: '排版', kind: 'enum', required: false, choices: ['normal', 'wide'], choiceLabels: ['常规', '加宽（0.16 倍字号）'] },
+  { key: 'textAlign', label: '正文对齐', group: '排版', kind: 'enum', required: false, choices: ['start', 'justify'], choiceLabels: ['起始侧对齐', '两端对齐'] },
+  { key: 'showTags', label: '显示标签', group: '内容信息', kind: 'boolean', required: false, defaultValue: true },
+  { key: 'hideMetadata', label: '隐藏作者和日期', group: '内容信息', kind: 'boolean', required: false }
 ];
 function basicValidate(options: JsonObject): ThemeValidationIssue[] {
   const issues: ThemeValidationIssue[] = [];
-  for (const key of Object.keys(options)) if (!['density', 'showTags'].includes(key)) issues.push({ key, code: 'unknown-option' });
   if (options.density !== 'comfortable' && options.density !== 'compact') issues.push({ key: 'density', code: 'invalid-value' });
   if (typeof options.showTags !== 'boolean') issues.push({ key: 'showTags', code: 'invalid-value' });
   return issues;
@@ -21,6 +30,25 @@ export const themeRegistry: readonly ThemeRegistration[] = [
   { id: 'minimal-list', label: '简洁列表', version: 1, frameworkIds: ['vue', 'react'], options: basicOptions, defaults: { density: 'comfortable', showTags: true }, validate: basicValidate },
   { id: 'card-grid', label: '卡片网格', version: 1, frameworkIds: ['vue', 'react'], options: basicOptions, defaults: { density: 'comfortable', showTags: true }, validate: basicValidate }
 ];
+// Only declared values become CSS classes. Optional reading preferences preserve
+// the version-1 defaults when absent, including old personal and share records.
+export function readingClasses(config: DisplayConfig | undefined): string {
+  if (!config || !['minimal-list', 'card-grid'].includes(config.themeId)) return '';
+  return basicOptions.filter(option => option.kind === 'enum' && option.key !== 'density' &&
+    Object.hasOwn(config.themeOptions, option.key) && option.choices?.includes(config.themeOptions[option.key]))
+    .map(option => `reading-${option.key}-${config.themeOptions[option.key]}`).join(' ');
+}
+export function themeSelectionOptions(theme: ThemeChoice | undefined, config: DisplayConfig | undefined): JsonObject {
+  const next = { ...(theme?.defaults ?? {}) };
+  if (config && theme && ['minimal-list', 'card-grid'].includes(config.themeId) && ['minimal-list', 'card-grid'].includes(theme.id)) {
+    for (const option of basicOptions) {
+      if (theme.options.some(descriptor => descriptor.key === option.key && descriptor.kind === option.kind) && Object.hasOwn(config.themeOptions, option.key)) {
+        next[option.key] = config.themeOptions[option.key];
+      }
+    }
+  }
+  return next;
+}
 export class ThemeConfigError extends ValidationError {
   constructor(readonly issues: readonly ThemeValidationIssue[]) { super('config', 'invalid-config'); }
 }
@@ -47,14 +75,19 @@ function themeDefaults(theme: ThemeRegistration): JsonObject {
   const keys = new Set<string>();
   for (const descriptor of theme.options) {
     assertJson(descriptor);
-    object(descriptor, ['key', 'label', 'kind', 'required', 'defaultValue', 'choices'], 'theme.options');
+    object(descriptor, ['key', 'label', 'kind', 'required', 'defaultValue', 'choices', 'choiceLabels', 'group'], 'theme.options');
     validId(descriptor.key, 'theme.options.key'); string(descriptor.label, 'theme.options.label', true);
     if (!['string', 'number', 'boolean', 'enum'].includes(descriptor.kind) || typeof descriptor.required !== 'boolean') throw new ValidationError('theme.options');
     if (keys.has(descriptor.key)) throw new ValidationError('theme.options', 'duplicate-option');
     keys.add(descriptor.key);
+    if (descriptor.group !== undefined) string(descriptor.group, 'theme.options.group', true);
     if (descriptor.kind === 'enum') {
       assertJson(descriptor.choices);
       if (!Array.isArray(descriptor.choices) || !descriptor.choices.length) throw new ValidationError('theme.options.choices');
+    }
+    if (descriptor.choiceLabels !== undefined) {
+      if (descriptor.kind !== 'enum' || !Array.isArray(descriptor.choiceLabels) || descriptor.choiceLabels.length !== descriptor.choices?.length) throw new ValidationError('theme.options.choiceLabels');
+      descriptor.choiceLabels.forEach(label => string(label, 'theme.options.choiceLabels', true));
     }
     if (Object.hasOwn(descriptor, 'defaultValue')) {
       assertJson(descriptor.defaultValue);

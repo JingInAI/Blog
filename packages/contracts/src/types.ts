@@ -96,6 +96,8 @@ export interface ThemeOptionDescriptor {
   required: boolean;
   defaultValue?: JsonValue;
   choices?: readonly JsonValue[];
+  choiceLabels?: readonly string[];
+  group?: string;
 }
 export interface ThemeChoice {
   id: string;
