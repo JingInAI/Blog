@@ -6,16 +6,17 @@ import { startHttpFixtures } from './http-browser-fixtures.ts';
 import { startThemeFixtures } from './theme-browser-fixtures.ts';
 import { startDevFixtures } from './dev-browser-fixtures.ts';
 import { authoredMetadata, authoredRichBody } from './authored-body-fixture.ts';
+import { readerBody } from './reader-body-fixture.ts';
 const root = path.resolve('.generated/e2e');
 const frameworks = ['vue', 'react'];
 const ports = [4301, 4302, 4303, 4304];
-for (const version of ['v1', 'v2']) {
+for (const version of ['v1', 'v2', 'reader']) {
   const fixture = path.join(root, 'fixtures', version); await mkdir(path.join(fixture, 'posts'), { recursive: true }); await mkdir(path.join(fixture, 'assets'), { recursive: true });
   await writeFile(path.join(fixture, 'site.json'), JSON.stringify({ schemaVersion: 1, title: '测试站点', author: '仅站点作者' }));
   const pixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jBqkAAAAASUVORK5CYII=', 'base64');
   await writeFile(path.join(fixture, 'assets/photo.png'), version === 'v1' ? pixel : Buffer.concat([pixel, Buffer.from('v2')]));
   const items = [
-    { id: 'a%+😀', title: '测试文章 A', summary: '明确摘要 A', ...authoredMetadata, body: '作者原文 ' + version + '\n\n[![作者图片描述](assets/photo.png)]()\n\n<script>window.INVENTED=true</script>' + authoredRichBody },
+    { id: 'a%+😀', title: '测试文章 A', summary: '明确摘要 A', ...authoredMetadata, body: version === 'reader' ? readerBody.replaceAll('](photo.png)', '](assets/photo.png)') : '作者原文 ' + version + '\n\n[![作者图片描述](assets/photo.png)]()\n\n<script>window.INVENTED=true</script>' + authoredRichBody },
     { id: 'b', title: '测试文章 B', body: '第二篇作者正文' }
   ];
   for (const item of items) { const { body, ...meta } = item; await writeFile(path.join(fixture, 'posts', meta.id.startsWith('a') ? 'a.md' : 'b.md'), '---\n' + JSON.stringify({ schemaVersion: 1, publication: 'published', ...meta }) + '\n---\n' + body); }

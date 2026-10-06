@@ -6,6 +6,8 @@ Vue 博客地址为 [https://jinginai.github.io/Blog/](https://jinginai.github.i
 
 ## 本地开发
 
+阅读标签位于展示设置：先选风格再勾选目标/兴趣，同组任一命中，不同组同时匹配。候选范围可选已加载目录或手动文章，视图可选片段/全文，清除标签恢复手动选择。可展开匹配依据并定位原文，分页需要显式加载。标签与外观分别保留，分享会话仍需显式保存。只读分析命令为 `npm run analyze:content -- content/posts/understanding-rsi.md`，报告写入 .generated/reader-analysis/；见 [阅读标签与原文结构](specs/reader-profile-matching.md)。
+
 使用 Node 24 LTS（`.nvmrc`）及随附 npm。依赖实际版本固定在 `package-lock.json`。
 
 ```sh

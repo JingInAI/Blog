@@ -37,6 +37,8 @@ GitHub Pages 工作流已记录本项目明确选择的 Vue；未设置仓库变
 
 ## 接入独立后端
 
+DisplayConfig 的可选 reader 独立于 themeOptions：`"reader": { "tagIds": ["engineering", "parameters"], "scope": "catalog", "mode": "matched" }`。scope 允许 catalog/selected，mode 允许 matched/full；省略字段或空标签时保留原展示。旧配置不迁移，普通会话自动保存，分享会话显式保存；目录模式不改写 contentIds。分组规则、分页范围和完整契约见 [阅读标签规格](specs/reader-profile-matching.md)。
+
 将 source 改为以下结构；地址是配置格式示例，不代表存在真实 API：
 
 ```json

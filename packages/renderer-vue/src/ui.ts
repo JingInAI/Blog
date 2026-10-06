@@ -5,11 +5,11 @@ type UIElement = VNode;
 const FRAMEWORK = 'vue';
 const el = (tag: string, props: Record<string, unknown> | null, ...children: UIChild[]): UIElement => { const p = props ? { ...props } : null; if (p && 'className' in p) { p.class = p.className; delete p.className; } return h(tag, p, children); };
 const image = (props: { key: string; id: string; node: Extract<import('@blog/contracts').SafeNode, { type: 'image' }>; resource: import('@blog/contracts').RenderedResource; context: import('@blog/contracts').RendererContext }): UIElement => h(ImageSlot, props);
-import { semanticEqual } from '@blog/contracts';
-import type { ContentRecord, ContentSummary, DisplayConfig, ItemState, JsonObject, JsonValue, RendererContext, SafeNode, ThemeChoice, ViewModel } from '@blog/contracts';
+import { semanticEqual, defaultReaderSelection } from '@blog/contracts';
+import type { ContentRecord, ContentSummary, DisplayConfig, ItemState, JsonObject, JsonValue, ReaderSelection, RendererContext, SafeNode, ThemeChoice, ViewModel } from '@blog/contracts';
 import { ImageSlot } from './image.ts';
 import { readingClasses, themeSelectionOptions } from '@blog/theme-contracts';
-export interface UiState { draftTheme: string; draftOptions: JsonObject; draftContentIds?: string[]; copyMessage: string; copyUrl: string; }
+export interface UiState { draftTheme: string; draftOptions: JsonObject; draftContentIds?: string[]; draftReader?: ReaderSelection; copyMessage: string; copyUrl: string; }
 export type UiUpdate = UiState | ((state: UiState) => UiState);
 export const initialUiState = (): UiState => ({ draftTheme: '', draftOptions: {}, copyMessage: '', copyUrl: '' });
 const displayConfig = (model: ViewModel): DisplayConfig | undefined => model.kind === 'page' ? model.page.config : model.kind === 'detail' ? model.config : undefined;
@@ -23,6 +23,7 @@ export function createUiStore(model: ViewModel) {
       let state = store.state;
       if (!semanticEqual(themeSelection(previousConfig), themeSelection(nextConfig))) state = { ...state, draftTheme: '', draftOptions: {} };
       if (!semanticEqual(previousConfig?.contentIds, nextConfig?.contentIds)) { state = { ...state }; delete state.draftContentIds; }
+      if (!semanticEqual(previousConfig?.reader, nextConfig?.reader)) { state = { ...state }; delete state.draftReader; }
       store.state = state; store.model = next;
     }
   };
@@ -30,6 +31,7 @@ export function createUiStore(model: ViewModel) {
 }
 export type UiStore = ReturnType<typeof createUiStore>;
 const messages: Record<string, string> = {
+  'invalid-reader-selection': '阅读标签设置无效，已保留原设置',
   'not-found': '内容不存在或未公开', unauthorized: '需要授权', forbidden: '无权访问', unavailable: '服务暂时不可用',
   network: '网络请求失败', timeout: '请求超时', 'invalid-response': '内容响应不符合约定', 'deployment-changed': '站点已更新，请更新页面',
   malformed: '分享链接格式无效', 'too-large': '分享配置过大', 'source-mismatch': '分享链接属于其他内容来源',
@@ -45,6 +47,12 @@ const valueFrom = (event: { target: EventTarget | null }): HTMLInputElement => e
 export function renderUi(model: ViewModel, context: RendererContext, state: UiState, setState: (state: UiUpdate) => void,
   readLatest: () => { model: ViewModel; state: UiState } = () => ({ model, state })): UIElement {
   const config = displayConfig(model);
+  const currentReader = (): ReaderSelection => { const latest = readLatest(); return latest.state.draftReader ?? displayConfig(latest.model)?.reader ?? defaultReaderSelection(); };
+  const readerSelection = state.draftReader ?? config?.reader ?? defaultReaderSelection();
+  const setReader = (selection?: ReaderSelection): void => {
+    setState(previous => ({ ...previous, draftReader: selection ?? defaultReaderSelection() }));
+    context.dispatch({ type: 'set-reader', ...(selection ? { selection } : {}) });
+  };
   const catalog = model.kind === 'page' ? model.page.catalog : model.kind === 'configure' ? model.catalog : undefined;
   const notices = model.kind === 'page' ? model.page.notices : model.kind === 'configure' || model.kind === 'detail' ? model.notices : [];
   const button = (label: string, action: () => void, props: Record<string, unknown> = {}): UIElement => el('button', { type: 'button', onClick: action, ...props }, label);
@@ -55,26 +63,46 @@ export function renderUi(model: ViewModel, context: RendererContext, state: UiSt
     config?.themeOptions.hideMetadata === true || content.author === undefined ? null : el('span', null, content.author),
     config?.themeOptions.hideMetadata === true || content.publishedAt === undefined ? null : el('time', { dateTime: content.publishedAt }, content.publishedAt),
     config?.themeOptions.showTags === false || content.tags === undefined ? null : el('span', { className: 'tags' }, ...content.tags.map((t, i) => el('span', { key: i }, t))));
-  function bodyNode(node: SafeNode, item: Extract<ItemState, { status: 'ready' }>, position: string): UIChild {
+  function bodyNode(node: SafeNode, item: Extract<ItemState, { status: 'ready' }>, position: string, sectionId?: string): UIChild {
     if (node.type === 'text') return node.value;
     if (node.type === 'image') {
       const resource = item.resources.find(r => r.key === node.resourceKey);
       return resource ? image({ key: resource.resourceRevision + ':' + resource.key, id: item.id, node, resource, context }) : error('unresolved-resource');
     }
     const anchor = node.tag === 'a' && node.props.href?.startsWith('#') && !node.props.href.startsWith('#/');
-    return el(node.tag, { ...node.props, key: position, ...(anchor ? { onClick: (event: { preventDefault(): void }) => { event.preventDefault(); const id = node.props.href!.slice(1); const target = document.getElementById(id); target?.scrollIntoView(); target?.setAttribute('tabindex', '-1'); target?.focus(); } } : {}) }, ...node.children.map((n, i) => bodyNode(n, item, position + '-' + i)));
+    return el(node.tag, { ...node.props, key: position, ...(sectionId ? { 'data-reader-section': sectionId } : {}), ...(anchor ? { onClick: (event: { preventDefault(): void }) => { event.preventDefault(); const id = node.props.href!.slice(1); const target = document.getElementById(id); target?.scrollIntoView(); target?.setAttribute('tabindex', '-1'); target?.focus(); } } : {}) }, ...node.children.map((n, i) => bodyNode(n, item, position + '-' + i)));
   }
+  const readingPanel = (item: Extract<ItemState, { status: 'ready' }>): UIElement | null => {
+    if (!model.reader.active || !item.reading) return null;
+    const structure = item.body.structure, matched = structure.sections.filter(section => item.reading!.matchedSectionIds.includes(section.id));
+    return el('section', { className: 'reader-match', 'aria-label': '阅读匹配：' + item.content.title },
+      el('p', null, matched.length ? `匹配 ${matched.length} 个原文片段；保留 ${item.reading.contextSectionIds.length} 个上下文章节。` : '这篇文章没有匹配片段，可调整标签或查看全文。'),
+      el('p', { className: 'muted' }, '匹配依据来自原标题与正文关键词，供您选择阅读内容。'),
+      el('details', null, el('summary', null, '查看匹配依据与原文位置'),
+        ...matched.map(section => el('section', { key: section.id },
+          el('p', null, section.title ?? '原文开头（无章节标题）', ` · 正文第 ${section.startLine}–${section.endLine} 行`),
+          button('定位原文片段', () => { const target = document.querySelector<HTMLElement>(`[data-reader-section="${CSS.escape(section.id)}"]`); target?.scrollIntoView({ block: 'start' }); target?.setAttribute('tabindex', '-1'); target?.focus(); }, { 'aria-label': '定位片段：' + section.id }),
+          ...section.evidence.filter(evidence => model.reader.selection.tagIds.includes(evidence.tagId)).map(evidence => el('div', { key: evidence.tagId },
+            el('p', null, model.reader.tags.find(tag => tag.id === evidence.tagId)?.label, `：${evidence.field === 'heading' ? '标题' : '正文'}命中“${evidence.term}”`),
+            el('blockquote', { className: 'reader-evidence' }, evidence.quote)))))));
+  };
   const article = (item: ItemState, full: boolean): UIElement => {
     if (item.status === 'loading') return el('article', { className: 'post', key: item.id, 'data-content-id': item.id }, el('p', { role: 'status' }, '内容加载中'));
     if (item.status === 'error' && item.error.kind === 'source') return el('article', { className: 'post', key: item.id, 'data-content-id': item.id }, error(item.error.detail.code), item.error.detail.retryable ? button('重试内容', () => context.dispatch({ type: 'retry-item', id: item.id })) : null);
+    const showBody = full || model.reader.active;
     const content = item.status === 'ready' ? item.content : 'content' in item ? item.content : undefined;
     return el('article', { className: 'post', key: item.id, 'data-content-id': item.id },
       content ? el('h2', null, content.title) : null, content ? metadata(content) : null,
-      !full && content?.summary !== undefined ? el('p', { className: 'summary' }, content.summary) : null,
+      !showBody && content?.summary !== undefined ? el('p', { className: 'summary' }, content.summary) : null,
       item.status === 'error' && item.error.kind === 'body' ? el('div', null, error(item.error.detail.code), 'content' in item ? el('details', null, el('summary', null, '查看原始 Markdown'), el('pre', null, item.content.body.value)) : null) : null,
-      item.status === 'ready' ? diagnostics([...item.sourceDiagnostics, ...(full ? item.bodyDiagnostics : [])]) : 'sourceDiagnostics' in item ? diagnostics(item.sourceDiagnostics) : null,
-      full && item.status === 'ready' ? el('div', { className: 'prose' }, ...item.body.nodes.map((n, i) => bodyNode(n, item, String(i)))) : null,
-      button('阅读全文', () => context.navigateToContent(item.id), { className: 'text-button', 'aria-label': '阅读全文：' + (content?.title ?? item.id) }));
+      item.status === 'ready' ? diagnostics([...item.sourceDiagnostics, ...(showBody ? item.bodyDiagnostics : [])]) : 'sourceDiagnostics' in item ? diagnostics(item.sourceDiagnostics) : null,
+      item.status === 'ready' ? readingPanel(item) : null,
+      showBody && item.status === 'ready' ? el('div', { className: 'prose' }, ...item.body.nodes.flatMap((node, index) => {
+        if (model.reader.active && model.reader.selection.mode === 'matched' && !item.reading?.nodeIndexes.includes(index)) return [];
+        const section = model.reader.active ? item.body.structure.sections.find(section => section.nodeIndexes[0] === index) : undefined;
+        return [bodyNode(node, item, String(index), section?.id)];
+      })) : null,
+      button('阅读全文', () => { if (model.reader.active) setReader({ ...currentReader(), mode: 'full' }); context.navigateToContent(item.id); }, { className: 'text-button', 'aria-label': '阅读全文：' + (content?.title ?? item.id) }));
   };
   const site = model.site.status === 'ready' ? model.site.info : undefined;
   const status = el('section', { className: 'feedback', 'aria-live': 'polite' },
@@ -152,7 +180,22 @@ export function renderUi(model: ViewModel, context: RendererContext, state: UiSt
           setState({ ...current.state, draftTheme: current.id, draftOptions: next });
           context.dispatch({ type: 'set-theme', themeId: current.id, options: next });
         }, { disabled: !selectedTheme })),
+      el('section', { className: 'reader-options', 'aria-label': '阅读标签设置' },
+        el('h3', null, '阅读标签'), el('p', { className: 'muted' }, config ? '同组任一标签匹配即可；不同组须同时匹配。未选择标签时保留原展示。' : '先选择网页风格，再按阅读标签发现内容。'),
+        ...['阅读目标', '兴趣方向'].map(group => el('fieldset', { className: 'option-group', key: group }, el('legend', null, group),
+          ...model.reader.tags.filter(tag => tag.group === group).map(tag => el('label', { key: tag.id, title: tag.description },
+            el('input', { type: 'checkbox', disabled: !config, 'aria-label': '阅读标签：' + tag.label, checked: readerSelection.tagIds.includes(tag.id), onChange: (event: { target: EventTarget | null }) => {
+              const current = currentReader(), checked = valueFrom(event).checked;
+              const tagIds = checked ? [...new Set([...current.tagIds, tag.id])] : current.tagIds.filter(id => id !== tag.id);
+              setReader({ ...current, tagIds, mode: current.tagIds.length ? current.mode : 'matched' });
+            } }), tag.label)))),
+        el('label', null, '候选范围', el('select', { 'aria-label': '候选范围', disabled: !config, value: readerSelection.scope, onChange: (event: { target: EventTarget | null }) => setReader({ ...currentReader(), scope: valueFrom(event).value as ReaderSelection['scope'] }) },
+          el('option', { value: 'catalog' }, '已加载的公开目录'), el('option', { value: 'selected' }, '手动选择的文章'))),
+        el('label', null, '阅读视图', el('select', { 'aria-label': '阅读视图', disabled: !config, value: readerSelection.mode, onChange: (event: { target: EventTarget | null }) => setReader({ ...currentReader(), mode: valueFrom(event).value as ReaderSelection['mode'] }) },
+          el('option', { value: 'matched' }, '匹配片段与原文上下文'), el('option', { value: 'full' }, '原文全文'))),
+        button('清除阅读标签', () => setReader(), { disabled: !config })),
       catalog ? el('section', { className: 'selection' }, el('h3', null, '选择内容'),
+        model.reader.active && readerSelection.scope === 'catalog' ? el('p', { className: 'muted' }, '当前按公开目录发现内容；手动选择用于“手动选择的文章”范围。') : null,
         !config ? el('p', null, '选择风格并完成必填参数后，再选择内容。') : null,
         catalog.status === 'loading' ? el('p', { role: 'status' }, catalog.retained ? '正在刷新目录；保留上次结果。' : '目录加载中') : null,
         catalog.status === 'error' ? el('div', null, error(catalog.error.code), catalog.retained ? el('p', null, '显示上次目录，可能不是最新内容。') : null) : null,
@@ -188,7 +231,11 @@ export function renderUi(model: ViewModel, context: RendererContext, state: UiSt
   else if (model.kind === 'configure') main = el('main', { className: 'main' }, el('h2', null, '选择风格与内容'), el('p', null, '选择风格后，可以从目录选择内容并调整顺序。'));
   else if (model.kind === 'detail') main = el('main', { className: 'main detail ' + config?.themeId + ' ' + config?.themeOptions.density }, button('返回首页', context.navigateHome), article(model.item, true));
   else main = el('main', { className: 'main' },
-    model.page.status === 'empty' ? el('p', { className: 'empty' }, '尚未选择内容') : null,
+    model.reader.active ? el('section', { className: 'reader-status', 'aria-label': '标签匹配状态', 'aria-live': 'polite' },
+      el('p', null, `已分析 ${model.reader.analyzedCount}/${model.reader.candidateCount} 篇，匹配 ${model.reader.matchingCount} 篇。`, model.reader.status === 'loading' ? '正在读取并分析内容。' : model.reader.status === 'partial' ? '部分内容未能完成分析，失败项保留在下方。' : ''),
+      model.reader.hasMore ? el('p', { className: 'muted' }, '结果只涵盖已加载目录，可加载更多文章继续匹配。') : null,
+      model.reader.selection.mode === 'matched' && model.reader.status === 'ready' && !model.page.items.length ? model.reader.candidateCount === 0 ? el('p', null, '当前范围没有候选文章，可以调整范围或手动选择内容。') : el('div', null, el('p', null, '已分析内容中没有符合所选标签的片段。'), button('查看候选文章全文', () => setReader({ ...currentReader(), mode: 'full' }))) : null) : null,
+    model.page.status === 'empty' && !model.reader.active ? el('p', { className: 'empty' }, '尚未选择内容') : null,
     el('div', { className: 'posts ' + config?.themeId + ' ' + config?.themeOptions.density }, ...model.page.items.map(item => article(item, config?.themeId === 'minimal-list'))));
   return el('div', { className: 'blog-surface ' + readingClasses(config) }, el('div', { className: 'blog-shell', 'data-framework': FRAMEWORK },
     el('header', { className: 'site-header' }, button('首页', context.navigateHome, { className: 'home' }),

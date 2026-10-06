@@ -1,4 +1,5 @@
 import { unified } from 'unified';
+import { structureArticle } from './reading.ts';
 import remarkParse from 'remark-parse';
 import remarkGfm from 'remark-gfm';
 import { BodyProcessError, freeze, publicUrl } from '@blog/contracts';
@@ -7,7 +8,7 @@ interface MdNode {
   type: string; children?: MdNode[]; value?: string; url?: string; alt?: string; title?: string | null;
   identifier?: string; label?: string; depth?: number; ordered?: boolean; start?: number | null;
   checked?: boolean | null; align?: ('left' | 'center' | 'right' | null)[];
-  position?: { start: { line: number; column: number } };
+  position?: { start: { line: number; column: number; offset?: number }; end?: { line: number; column: number; offset?: number } };
 }
 const parser = unified().use(remarkParse).use(remarkGfm);
 const parse = (record: ContentRecord): MdNode => parser.parse(record.body.value) as unknown as MdNode;
@@ -116,6 +117,9 @@ export function processBody(record: ContentRecord, context: ResourceContext): Bo
       default: throw new BodyProcessError('unsupported-content');
     }
   }
-  try { return freeze({ body: { nodes: convert(root) } as unknown as SafeBody, resources, diagnostics }); }
+  try {
+    const nodes: SafeNode[] = [], counts = (root.children ?? []).map(node => { const converted = convert(node); nodes.push(...converted); return converted.length; });
+    return freeze({ body: { nodes, structure: structureArticle(record, root, counts) } as unknown as SafeBody, resources, diagnostics });
+  }
   catch (e) { if (e instanceof BodyProcessError) throw e; throw new BodyProcessError('conversion-failed'); }
 }

@@ -1,4 +1,4 @@
-import { assertJson, freeze, object, string, validId, ValidationError, semanticEqual } from '@blog/contracts';
+import { assertJson, freeze, object, string, validId, ValidationError, semanticEqual, normalizeReaderSelection } from '@blog/contracts';
 import type { DisplayConfig, JsonObject, JsonValue, ThemeChoice, ThemeOptionDescriptor, ThemeValidationIssue } from '@blog/contracts';
 export interface ThemeRegistration {
   id: string; label: string; version: number; frameworkIds: readonly string[];
@@ -146,7 +146,7 @@ export function snapshotRegistry(registry = themeRegistry): readonly ThemeRegist
 export function normalizeConfig(value: unknown, frameworkId: string, registry = themeRegistry): DisplayConfig {
   const defaults = registeredDefaults(registry);
   assertJson(value);
-  const o = object(value, ['version', 'contentIds', 'themeId', 'themeVersion', 'themeOptions'], 'config');
+  const o = object(value, ['version', 'contentIds', 'themeId', 'themeVersion', 'themeOptions', 'reader'], 'config');
   if (o.version !== 1 || !Array.isArray(o.contentIds) || typeof o.themeId !== 'string' || !Number.isInteger(o.themeVersion) || Number(o.themeVersion) < 1) throw new ValidationError('config');
   const ids = o.contentIds.map(id => validId(id)); if (new Set(ids).size !== ids.length) throw new ValidationError('config.contentIds');
   const theme = registry.find(t => t.id === o.themeId && t.frameworkIds.includes(frameworkId));
@@ -167,7 +167,7 @@ export function normalizeConfig(value: unknown, frameworkId: string, registry = 
     .filter((issue, index, all) => all.findIndex(other => other.key === issue.key && other.code === issue.code) === index);
   if (issues.length) throw new ThemeConfigError(issues);
   assertJson(options); if (!semanticEqual(options, JSON.parse(JSON.stringify(options)))) throw new ValidationError('config.themeOptions');
-  return { version: 1, contentIds: ids, themeId: theme.id, themeVersion: theme.version, themeOptions: options };
+  return { version: 1, contentIds: ids, themeId: theme.id, themeVersion: theme.version, themeOptions: options, ...(Object.hasOwn(o, 'reader') ? { reader: normalizeReaderSelection(o.reader) } : {}) };
 }
 export function verifyThemeImplementations(frameworkId: string, supported: readonly string[], registry = themeRegistry): void {
   registeredDefaults(registry);

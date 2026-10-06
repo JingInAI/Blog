@@ -82,12 +82,21 @@ export type BootstrapState =
 
 export type JsonValue = null | boolean | number | string | JsonValue[] | JsonObject;
 export interface JsonObject { [key: string]: JsonValue; }
+export interface ReaderTag { id: string; label: string; group: '阅读目标' | '兴趣方向'; description: string; }
+export interface ReaderSelection { tagIds: string[]; scope: 'catalog' | 'selected'; mode: 'full' | 'matched'; }
+export interface ReaderEvidence { tagId: string; field: 'heading' | 'body'; term: string; quote: string; startOffset: number; endOffset: number; startLine: number; endLine: number; }
+export interface ReadingBlock { kind: string; startOffset: number; endOffset: number; startLine: number; endLine: number; nodeIndexes: readonly number[]; }
+export interface ReadingSection { id: string; title?: string; level: number; parentId?: string; startOffset: number; endOffset: number; startLine: number; endLine: number; nodeIndexes: readonly number[]; blocks: readonly ReadingBlock[]; evidence: readonly ReaderEvidence[]; }
+export interface ArticleStructure { schemaVersion: 1; ruleVersion: 1; contentId: string; sourceLength: number; sections: readonly ReadingSection[]; supportingNodeIndexes: readonly number[]; }
+export interface ReaderMatch { matchedSectionIds: readonly string[]; contextSectionIds: readonly string[]; nodeIndexes: readonly number[]; }
+export interface ReaderView { selection: ReaderSelection; tags: readonly ReaderTag[]; active: boolean; candidateCount: number; analyzedCount: number; matchingCount: number; status: 'loading' | 'ready' | 'partial'; hasMore: boolean; }
 export interface DisplayConfig {
   version: 1;
   contentIds: string[];
   themeId: string;
   themeVersion: number;
   themeOptions: JsonObject;
+  reader?: ReaderSelection;
 }
 export interface ThemeOptionDescriptor {
   key: string;
@@ -131,6 +140,7 @@ export type PersonalReadState =
 
 export type DisplayEvent =
   | { type: 'set-content'; ids: string[] }
+  | { type: 'set-reader'; selection?: ReaderSelection }
   | { type: 'set-theme'; themeId: string; options: JsonObject }
   | { type: 'retry-item'; id: string }
   | { type: 'retry-bootstrap' }
@@ -174,7 +184,7 @@ export interface BodyDiagnostic {
 }
 export type ItemState =
   | { id: string; status: 'loading' }
-  | { id: string; status: 'ready'; content: ContentRecord; body: SafeBody;
+  | { id: string; status: 'ready'; content: ContentRecord; body: SafeBody; reading?: ReaderMatch;
       sourceDiagnostics: readonly SourceDiagnostic[]; bodyDiagnostics: readonly BodyDiagnostic[];
       resources: readonly RenderedResource[]; resourceStatus: 'idle' | 'loading' | 'ready' | 'degraded' }
   | { id: string; status: 'error'; error: { kind: 'source'; detail: ContentError } }
@@ -275,6 +285,7 @@ export type ShareInputState =
   | { status: 'valid' }
   | { status: 'invalid'; code: 'malformed' | 'too-large' | 'source-mismatch' | 'invalid-config' };
 export interface ViewCommon {
+  reader: ReaderView;
   site: SiteState;
   shareInput: ShareInputState;
   personalRead: PersonalReadState;
@@ -305,7 +316,7 @@ export type SafeNode =
   | { readonly type: 'image'; readonly resourceKey: string; readonly alt: string; readonly title?: string }
   | { readonly type: 'element'; readonly tag: SafeTag; readonly props: Readonly<{ href?: string; title?: string; start?: number; checked?: boolean; disabled?: boolean; type?: 'checkbox'; align?: 'left' | 'center' | 'right'; id?: string }>; readonly children: readonly SafeNode[] };
 declare const safeBodyBrand: unique symbol;
-export interface SafeBody { readonly [safeBodyBrand]: true; readonly nodes: readonly SafeNode[]; }
+export interface SafeBody { readonly [safeBodyBrand]: true; readonly nodes: readonly SafeNode[]; readonly structure: ArticleStructure; }
 export interface Manifest {
   schemaVersion: 1;
   buildId: string;

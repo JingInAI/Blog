@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import type { ContentRecord } from '@blog/contracts';
 import { authoredMetadata, authoredRichBody } from './authored-body-fixture.ts';
+import { readerBody } from './reader-body-fixture.ts';
 
 const apiOrigin = 'http://127.0.0.1:4305';
 const pixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jBqkAAAAASUVORK5CYII=', 'base64');
@@ -35,14 +36,15 @@ export async function startHttpFixtures(root: string): Promise<void> {
       } catch { res.statusCode = 404; res.end(); }
     }).listen(ports[i], '127.0.0.1');
   }
-  let siteStatus = 200, listStatus = 200, detailMode = 'valid', cors = true;
+  let siteStatus = 200, listStatus = 200, detailMode = 'valid', cors = true, readerFixture = false;
   let requests: Array<{ path: string; cookiePresent: boolean }> = [];
   createServer((req, res) => {
     const url = new URL(req.url ?? '/', apiOrigin);
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('Content-Type', 'application/json');
     if (url.pathname === '/__control') {
-      if (url.searchParams.get('reset') === 'true') { siteStatus = listStatus = 200; detailMode = 'valid'; cors = true; requests = []; }
+      if (url.searchParams.get('reset') === 'true') { siteStatus = listStatus = 200; detailMode = 'valid'; cors = true; readerFixture = false; requests = []; }
+      if (url.searchParams.has('reader')) readerFixture = url.searchParams.get('reader') === 'true';
       if (url.searchParams.has('siteStatus')) siteStatus = Number(url.searchParams.get('siteStatus'));
       if (url.searchParams.has('listStatus')) listStatus = Number(url.searchParams.get('listStatus'));
       if (url.searchParams.has('detailMode')) detailMode = url.searchParams.get('detailMode')!;
@@ -67,7 +69,7 @@ export async function startHttpFixtures(root: string): Promise<void> {
       const item = records.find(item => item.id === decodeURIComponent(url.pathname.slice('/api/contents/'.length)));
       if (!item) { res.statusCode = 404; res.end('{}'); return; }
       if (detailMode === 'unavailable') { res.statusCode = 503; res.end('{}'); return; }
-      res.end(JSON.stringify({ schemaVersion: 1, item: { ...item, ...(detailMode === 'wrong-id' ? { id: 'wrong-id', title: '错误身份文章' } : {}), ...(detailMode === 'draft' ? { publication: 'draft', title: '未公开文章' } : {}), extraField: 'DETAIL_UNKNOWN_VALUE' }, resourceBaseUrl: apiOrigin + '/media/' })); return;
+      res.end(JSON.stringify({ schemaVersion: 1, item: { ...item, ...(readerFixture && item.id === 'api%+😀' ? { body: { format: 'markdown', value: readerBody } } : {}), ...(detailMode === 'wrong-id' ? { id: 'wrong-id', title: '错误身份文章' } : {}), ...(detailMode === 'draft' ? { publication: 'draft', title: '未公开文章' } : {}), extraField: 'DETAIL_UNKNOWN_VALUE' }, resourceBaseUrl: apiOrigin + '/media/' })); return;
     }
     res.statusCode = 404; res.end('{}');
   }).listen(4305, '127.0.0.1');

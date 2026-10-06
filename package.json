@@ -10,6 +10,7 @@
     "packages/*"
   ],
   "scripts": {
+    "analyze:content": "tsx scripts/analyze-content.ts",
     "dev:vue": "tsx scripts/site.ts dev vue",
     "dev:react": "tsx scripts/site.ts dev react",
     "build:vue": "tsx scripts/site.ts build vue",

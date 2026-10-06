@@ -1,7 +1,8 @@
-import { assertJson, BootstrapError, BodyProcessError, ContentSourceError, StorageError, contentError, freeze, isAbort, parseJson, semanticEqual, validId } from '@blog/contracts';
+import { assertJson, BootstrapError, BodyProcessError, ContentSourceError, StorageError, contentError, freeze, isAbort, parseJson, semanticEqual, validId, readerTags, defaultReaderSelection } from '@blog/contracts';
 import type { BootstrapState, CatalogState, ConfigStatus, ContentResult, DeploymentState, DisplayConfig, DisplayEvent, ItemState, LocationInput, PersonalReadState, PersonalStoragePort, RendererContext, RouteTarget, SessionUrlPort, SiteState, SourceRuntime, SourceRuntimeFactory, ThemeValidationIssue, ViewModel, DeploymentProbeEvent } from '@blog/contracts';
 import { choices, normalizeConfig, snapshotRegistry, ThemeConfigError, themeRegistry } from '@blog/theme-contracts';
 import { processBody } from './body.ts';
+import { retainReadingReferences, selectReadingSections } from './reading.ts';
 import { createShareUrl, parseShare, sameShare, ShareProtocolError } from './sharing.ts';
 type Operations = ViewModel['operations'];
 interface Slot { id: string; seq: number; abort: AbortController; item: ItemState; }
@@ -70,17 +71,31 @@ export class BlogController {
   private parseLocation(): ReturnType<typeof parseShare> { return parseShare(this.location.search, this.options.factory.identity.sourceId, this.options.frameworkId, this.registry); }
   subscribe(listener: (model: ViewModel) => void): () => void { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; }
   start(): void { if (!this.started && !this.destroyed) { this.started = true; void this.initialize(); } }
+  private candidateIds(): string[] {
+    return this.config?.reader?.tagIds.length && this.config.reader.scope === 'catalog' ? this.catalog.snapshot.items.map(item => item.id) : this.config?.contentIds ?? [];
+  }
   getModel(): ViewModel {
-    const common = { site: this.site, shareInput: this.parsedShare.state, personalRead: this.personalRead, themes: choices(this.options.frameworkId, this.registry), navigation: { target: this.location.target, routeRevision: this.routeRevision }, deployment: this.deployment, themeValidation: this.themeValidation, configuration: this.configuration, operations: this.operations };
+    const selection = this.config?.reader ?? defaultReaderSelection(), active = selection.tagIds.length > 0;
+    const rawItems: ItemState[] = this.location.target.kind === 'detail' && this.config ? [this.detail?.item ?? { id: this.location.target.id, status: 'loading' }] : this.candidateIds().map(id => this.slots.get(id)?.item ?? { id, status: 'loading' });
+    const items = rawItems.map(item => {
+      if (!active || item.status !== 'ready') return item;
+      const reading = retainReadingReferences(item.body, selectReadingSections(item.body.structure, selection));
+      return { ...item, reading };
+    });
+    const analyzedCount = rawItems.filter(item => item.status === 'ready').length;
+    const reader = { selection, tags: readerTags, active, candidateCount: rawItems.length, analyzedCount,
+      matchingCount: items.filter(item => item.status === 'ready' && item.reading?.matchedSectionIds.length).length,
+      status: rawItems.some(item => item.status === 'loading') || (active && selection.scope === 'catalog' && this.catalog.status === 'loading') ? 'loading' as const : rawItems.some(item => item.status === 'error') || (active && selection.scope === 'catalog' && this.catalog.status === 'error') ? 'partial' as const : 'ready' as const,
+      hasMore: active && selection.scope === 'catalog' && this.catalog.status === 'ready' && (this.catalog.paging.status !== 'idle' || this.catalog.paging.nextCursor !== undefined) };
+    const common = { reader, site: this.site, shareInput: this.parsedShare.state, personalRead: this.personalRead, themes: choices(this.options.frameworkId, this.registry), navigation: { target: this.location.target, routeRevision: this.routeRevision }, deployment: this.deployment, themeValidation: this.themeValidation, configuration: this.configuration, operations: this.operations };
     let model: ViewModel;
     if (!this.runtime) model = { ...common, kind: 'bootstrap', bootstrap: this.bootstrap };
     else if (!this.config) model = { ...common, kind: 'configure', catalog: this.catalog, notices: this.notices };
-    else if (this.location.target.kind === 'detail') model = { ...common, kind: 'detail', config: this.config, item: this.detail?.item ?? { id: this.location.target.id, status: 'loading' }, notices: this.notices };
+    else if (this.location.target.kind === 'detail') model = { ...common, kind: 'detail', config: this.config, item: items[0], notices: this.notices };
     else {
-      const items = this.config.contentIds.map(id => this.slots.get(id)?.item ?? { id, status: 'loading' as const });
       const loading = items.filter(i => i.status === 'loading').length, ready = items.filter(i => i.status === 'ready').length;
       const status = !items.length ? 'empty' : loading === items.length ? 'loading' : ready === items.length ? 'ready' : !loading && !ready ? 'error' : 'partial';
-      model = { ...common, kind: 'page', page: { revision: this.configRevision, config: this.config, catalog: this.catalog, items, status, notices: this.notices } };
+      model = { ...common, kind: 'page', page: { revision: this.configRevision, config: this.config, catalog: this.catalog, items: active && selection.mode === 'matched' ? items.filter(item => item.status !== 'ready' || !!item.reading?.matchedSectionIds.length) : items, status, notices: this.notices } };
     }
     return freeze(structuredClone(model));
   }
@@ -180,6 +195,7 @@ export class BlogController {
           if (this.destroyed || !this.runtime) return;
           if (type === 'set-theme') this.themeValidation = [{ key: 'themeId', code: 'invalid-value' }];
           else if (type === 'set-content') this.notices = [{ code: 'invalid-content-selection' }];
+          else if (type === 'set-reader') this.notices = [{ code: 'invalid-reader-selection' }];
           else return;
           this.emit();
         });
@@ -194,8 +210,17 @@ export class BlogController {
     switch (event.type) {
       case 'set-theme': {
         const theme = this.registry.find(t => t.id === event.themeId);
-        try { this.edit(this.normalize({ version: 1, contentIds: this.config?.contentIds ?? [], themeId: event.themeId, themeVersion: theme?.version, themeOptions: event.options })); }
+        try { this.edit(this.normalize({ version: 1, contentIds: this.config?.contentIds ?? [], themeId: event.themeId, themeVersion: theme?.version, themeOptions: event.options, ...(this.config?.reader ? { reader: this.config.reader } : {}) })); }
         catch (e) { this.themeValidation = e instanceof ThemeConfigError ? e.issues : [{ key: 'themeId', code: 'invalid-value' }]; this.emit(); }
+        return;
+      }
+      case 'set-reader': {
+        if (!this.config) return;
+        try {
+          const next = { ...this.config };
+          if (event.selection === undefined) delete next.reader; else next.reader = event.selection;
+          this.edit(this.normalize(next));
+        } catch { this.notices = [{ code: 'invalid-reader-selection' }]; this.emit(); }
         return;
       }
       case 'set-content': {
@@ -322,12 +347,12 @@ export class BlogController {
       if (this.destroyed || this.runtime !== runtime || sequence !== this.catalogSequence || isAbort(e)) return;
       this.catalog = cursor === undefined ? { status: 'error', snapshot, retained: snapshot.items.length > 0 || snapshot.diagnostics.length > 0, error: contentError(e) } : { status: 'ready', snapshot, paging: { status: 'error', cursor, error: contentError(e) } };
     }
-    this.emit();
+    this.syncSlots(false); this.emit();
   }
   private syncSlots(rebind: boolean): void {
     if (this.destroyed || !this.runtime) return;
     const runtime = this.runtime;
-    const selected = this.config?.contentIds ?? [];
+    const selected = this.candidateIds();
     for (const [id, slot] of this.slots) if (!selected.includes(id)) { slot.abort.abort(); this.slots.delete(id); }
     for (const id of selected) {
       let slot = this.slots.get(id);

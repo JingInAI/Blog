@@ -42,6 +42,8 @@ enum choices 不允许语义重复，包括键顺序不同的等值对象。恢�
 
 安全正文 `SafeBody.nodes` 是只读树。节点仅有 text、element、image；element 的标签及属性白名单见 SafeTag/SafeNode，禁止字符串 HTML 注入。image 仅含 resourceKey、作者 alt/title，不带可绕过加载协议的 src。
 
+SafeBody.structure 提供共享解析链生成的原文章节、源位置和标签依据。适配器派发 set-reader，从 ViewModel.reader 展示统一标签/计数/状态，从 ready 条目的 reading.nodeIndexes 选择原节点；matched 显示片段及原文上下文，full 显示全部节点。保留作者文字、图片加载协议和脚注 ID，匹配说明放在正文之外。新框架不得另建解析或匹配规则，详见 [阅读标签契约](specs/reader-profile-matching.md)。
+
 图片首次展示先发 start-resource，收到 loading 模型后才按 RenderedResource.url 建立图片节点；加载/失败带 resourceRevision 和 attemptRevision，缓存完成也要报告。仅保存提示变化保留节点，主动退出发 detach；失败占位保留槽位。重试同一个 URL，不能添加签名破坏参数。旧修订/尝试的事件会被忽略。
 
 图片可能作为作者链接的子节点。重试控件须阻止默认链接导航及点击冒泡，再派发 retry-resource，不能因恢复图片而打开父链接、退出详情或移动锚点；恢复后的图片和链接仍保留作者目标。
