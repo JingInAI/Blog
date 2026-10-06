@@ -2,7 +2,7 @@
 
 修订标识：implementation-17，基于 review-07，与计划同步实施。最新字节、来源配置与输出审查见 [boundary-lifecycle-audit.md](boundary-lifecycle-audit.md)，前轮记录见 [输入准确性](input-fidelity-audit.md)、[版本与生命周期](version-lifecycle-audit.md)、[内容完整性](integrity-audit.md) 和 [可靠性审查](reliability-audit.md)。
 
-状态：P0–P6 已实施，implementation-17 完整本地验收已通过；用户于 2026-10-06 明确恢复发布，首次 Vue Pages 部署及当前空内容站点的线上验收通过；T14 的实际正文/图片/跨内容发布部分仍待作者内容与下一次内容发布。此前 Pages 元数据读取失败记录保留，当前状态见 [执行记录](../plans/execution.md)。
+状态：P0–P6 已实施，implementation-17 完整本地验收已通过；2026-10-06 已完成授权 RSI 全文及 22 张配图的 Vue Pages 发布和线上验收。跨发布旧正文 404、版本提示、显式更新后的正文/图片恢复核心断言已通过；恢复链接的配置另行复核通过。跨发布脚本最后的首页控件定位错误保留，不计整段成功；真实 API 与线上异常注入未执行。此前 Pages 失败记录保留，当前证据见 [执行记录](../plans/execution.md)。
 
 “必须”为验收要求，“建议”为可替换实现选择。计划见 [plan.md](../plans/plan.md)。
 
@@ -768,3 +768,5 @@ implementation-17 将输入准确性扩展到原始字节：本地文章/站点/
 
 
 首次线上发布于 2026-10-06 完成：Vue、静态来源、https://jinginai.github.io/Blog/，源码 0b4d399，对应 Actions 运行 37428114955 的 verify/build-pages/deploy 全部成功。真实 Chromium 验证当前空内容的路由、两主题、分享与个人配置恢复；线上七个文件与已验收候选逐字节哈希一致。没有作者文章和图片时不添加虚构内容，T14 中真实正文/图片和跨内容发布部分保持待办；真实 API 未启用。CI 的开发服务就绪测试改为 HTTP 200，显式彩色输出补验避免终端格式依赖；诊断只公开限定元数据，详见执行记录。
+
+随后新增用户授权的 understanding-rsi 中文长文和 22 张原图。最终源码 794c410、Actions 运行 37433960384 的 verify/build-pages/deploy 全部成功，内容 buildId 为 9925b008ea691efcbd916dc9530429ff557394c391e5c48b811cf05af835b8db。Vue 线上长文检查通过，30 个文件与候选哈希一致；React 对同一内容的本地检查通过。会话缓存的目录刷新不触发探测，未缓存旧正文的 404 实际触发更新提示；显式更新后正文和全部配图恢复。脚本最后错误地在详情页定位首页选择框，整段运行不计成功；恢复 URL 的分享、风格、空选择和详情另行线上复核通过。原标题、摘要、标签、配图和原文保留，不补作者或日期时区；原文公式仍显示 LaTeX 文本。来源、证据和验收边界见 [RSI 导入审查](understanding-rsi-import.md)。

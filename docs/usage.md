@@ -2,7 +2,7 @@
 
 项目将作者内容、共享控制器和 Vue/React 渲染适配器分开。生产内容初始为空；没有默认风格或默认文章。先应用风格，再选择内容。测试站点、文章及图片仅由测试脚本生成，不属于生产内容。
 
-首次 Vue 发布已于 2026-10-06 完成，地址 [https://jinginai.github.io/Blog/](https://jinginai.github.io/Blog/)；[真实 Actions 运行](https://github.com/JingInAI/Blog/actions/runs/37428114955) 成功，当前空内容站点的线上验收通过。以下本地命令不需要 GitHub 认证或 Pages 设置；实际版本、证据与未验证范围见 [执行记录](plans/execution.md)。
+Vue 博客地址为 [https://jinginai.github.io/Blog/](https://jinginai.github.io/Blog/)。2026-10-06 首次发布后，已完成授权 RSI 全文与 22 图发布，最终 [Actions 运行](https://github.com/JingInAI/Blog/actions/runs/37433960384) 成功；实际版本、证据与验收边界见 [执行记录](plans/execution.md)。以下本地命令不需要 GitHub 认证或 Pages 设置。
 
 ## 本地开发
 
@@ -93,7 +93,9 @@ BLOG_FRAMEWORK=vue BLOG_BASE_PATH=/Blog/ npm run build
 
 `BLOG_BASE_PATH=/` 用于域名根目录。所有静态资源使用该路径，详情用 `#/content/<编码ID>`，因此详情刷新不要求服务端重写。
 
-此次真实发布已验证 HTTPS 首页与 JS/CSS、内容版本清单、两风格、个人配置刷新、分享刷新、显式保存、重置、坏分享、缺失详情刷新、非法路由恢复及 390 像素布局；线上七个公开文件 SHA-256 与 Vue `/Blog/` 候选完全一致。目前没有作者文章或图片，未验证实际正文/图片及旧会话跨内容发布，真实 API 未接入；添加作者内容后继续这些环境验收。
+首次发布验证 HTTPS 首页与 JS/CSS、版本清单、两风格、个人/分享刷新、保存、重置、坏分享、缺失详情及非法路由恢复和手机布局；七个文件哈希与对应候选一致。最终文章发布进一步验证全部正文与 22 张原图、分享保存、详情刷新，30 个文件哈希与最终 Vue `/Blog/` 候选一致。旧正文 404 与显式更新核心断言已通过，恢复链接配置独立复核通过；整段跨发布脚本最后的首页控件定位错误另记。真实 API 未接入。来源和公式显示限制见 [RSI 导入审查](specs/understanding-rsi-import.md)。
+
+线上首页先选择“简洁列表”或“卡片网格”，点击“应用风格”，再勾选“万字长文带你读懂 RSI（自进化，Self-Evolving）”。简洁列表显示正文，卡片网格可点击“阅读全文”；详情页生成的分享链接保留当前文章目标与风格。首次访问由用户选择内容。数学公式目前显示 LaTeX 文本，未提供 KaTeX 排版。
 
 官方资料：[Pages 自定义工作流](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)、[configure-pages 输出](https://github.com/actions/configure-pages/blob/main/action.yml)、[Vite](https://vite.dev/guide/)、[Playwright CLI](https://playwright.dev/docs/test-cli)。
 
